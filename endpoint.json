@@ -1,0 +1,41 @@
+{
+    "label": "HL7",
+    "name": "hl7",
+    "apiVersion": "v1",
+    "internal": false,
+    "configurationType": "GLOBAL",
+    "deployment": {
+        "type": "java11",
+        "profiles":[
+            {
+                "name": "default",
+                "label": "Default",
+                "memory": 512,
+                "offHeapMinFactor": 1.5,
+                "description": "Default configuration"
+            }
+        ],
+        "allowMultipleInstances": false
+    },
+    "configurationHelpUrl": "/endpoints_hl7.html",
+    "status": "ACTIVE",
+    "stores": [],
+    "events": [
+        {
+            "label": "Message Arrived",
+            "name": "messageArrived",
+            "description": "When a new HL7 arrived."
+        }
+    ],
+    "functions": [
+        {
+            "label": "Send Message",
+            "name": "_sendMessage"
+        }
+    ],
+    "scripts":[
+        "helpers.js"
+    ],
+    "configuration":[
+    ]
+}
