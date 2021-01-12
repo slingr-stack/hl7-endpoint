@@ -27,7 +27,7 @@
         <junit.version>4.12</junit.version>
         <mockito.version>1.10.19</mockito.version>
         <!-- Build properties -->
-        <jdk.version>11</jdk.version>
+        <jdk.version>1.8</jdk.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.compiler.version>2.5.1</project.build.compiler.version>
         <project.build.source.version>3.0.1</project.build.source.version>
