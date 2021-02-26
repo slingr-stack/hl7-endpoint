@@ -85,6 +85,18 @@
                     }
                 ]
             }
+        },
+        {
+            "label": "Connect to VPN",
+            "name": "connectToVpn",
+            "type": "boolean",
+            "defaultValue": true
+        },
+        {
+            "label": "OVPN",
+            "name": "ovpn",
+            "type": "text",
+            "required": true        
         }
     ]
 }
