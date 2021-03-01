@@ -89,7 +89,7 @@
         {
             "label": "Connect to VPN",
             "name": "connectToVpn",
-            "type": "boolean",
+            "type": "toggle",
             "defaultValue": true
         },
         {
