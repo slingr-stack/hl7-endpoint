@@ -97,6 +97,18 @@
             "name": "ovpn",
             "type": "text",
             "required": true        
-        }
+        },
+                {
+            "label": "VPN Username",
+            "name": "vpnUsername",
+            "type": "text",
+            "required": true        
+        },
+        {
+            "label": "VPN Password",
+            "name": "vpnPassword",
+            "type": "password",
+            "required": true        
+        }        
     ]
 }
