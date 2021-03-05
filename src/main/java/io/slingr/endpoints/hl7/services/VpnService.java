@@ -15,10 +15,6 @@ public class VpnService {
 
 	private static final Logger logger = LoggerFactory.getLogger(VpnService.class);
 
-//	@ApplicationLogger
-//	protected AppLogs appLogger;
-
-	private final String PATH = "";
 	private static final String NEW_LINE = System.getProperty("line.separator");
 
 	public String createOvpnFile(String ovpnContent) {
@@ -67,17 +63,6 @@ public class VpnService {
 		}
 	}
 
-	public boolean deleteOvpnFile() {
-		File file = new File(PATH + "client.ovpn");
-		if (file.delete()) {
-			logger.info("The file client.ovpn was deleted succesfully.");
-			return true;
-		} else {
-			logger.error("The file client.ovpn could not been deleted because it was not found.");
-			return false;
-		}
-	}
-
 	public void connectToVpn(String ovpnFilePath, String credentialsFilePath) {
 		List<String> commandParams = new ArrayList<>();
 //		commandParams.add("sudo"); only for mac
@@ -107,8 +92,8 @@ public class VpnService {
 		}
 		logger.info("VPN connection result " + result.toString());
 	}
-	
-	public void killVpnConnection () {
+
+	public void killVpnConnection() {
 		List<String> commandParams = new ArrayList<>();
 		commandParams.add("killall");
 		commandParams.add("-SIGINT");

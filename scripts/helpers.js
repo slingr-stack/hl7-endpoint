@@ -1,7 +1,7 @@
-endpoint.sendMessage = function(channel, message) {
+endpoint.sendHl7Message = function(channel, message) {
     var params = {
         channel: channel,
         message: message
     };
-    return endpoint._sendMessage(params);
+    return endpoint._sendHl7Message(params);
 };

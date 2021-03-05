@@ -1,114 +1,119 @@
 {
-    "label": "HL7",
-    "name": "hl7",
-    "apiVersion": "v1",
-    "internal": false,
-    "configurationType": "GLOBAL",
-    "deployment": {
-        "type": "java11",
-        "profiles":[
-            {
-                "name": "default",
-                "label": "Default",
-                "memory": 512,
-                "offHeapMinFactor": 1.5,
-                "description": "Default configuration"
-            }
-        ],
-        "allowMultipleInstances": false
-    },
-    "configurationHelpUrl": "/endpoints_hl7.html",
-    "status": "ACTIVE",
-    "stores": [],
-    "events": [
-        {
-            "label": "Message Arrived",
-            "name": "messageArrived",
-            "description": "When a new HL7 arrived."
-        }
-    ],
-    "functions": [
-        {
-            "label": "Send Message",
-            "name": "_sendMessage"
-        }
-    ],
-    "scripts":[
-        "helpers.js"
-    ],
-    "configuration":[
-        {
-            "label": "Channels",
-            "name": "channels",
-            "type": "fieldsGroup",
-            "multiplicity": "many",
-            "required": true,
-            "showLabel": true,
-            "typeOptions": {
-                "fields": [
-                    {
-                        "label": "Name",
-                        "name": "name",
-                        "type": "text",
-                        "multiplicity": "one",
-                        "showLabel": true,
-                        "required": true
-                    },
-                    {
-                        "label": "Type",
-                        "name": "type",
-                        "type": "choice",
-                        "multiplicity": "one",
-                        "options": {
-                            "possibleValues": [
-                                {"label": "Sender", "name":  "sender"},
-                                {"label":  "Receiver", "name":  "receiver"}
-                            ]
-                        },
-                        "required": true
-                    },
-                    {
-                        "label": "IP",
-                        "name": "ip",
-                        "type": "text",
-                        "multiplicity": "one",
-                        "showLabel": true,
-                        "required": false
-                    },
-                    {
-                        "label": "Port",
-                        "name": "port",
-                        "type": "text",
-                        "multiplicity": "one",
-                        "showLabel": true,
-                        "required": true
-                    }
-                ]
-            }
-        },
-        {
-            "label": "Connect to VPN",
-            "name": "connectToVpn",
-            "type": "toggle",
-            "defaultValue": true
-        },
-        {
-            "label": "OVPN",
-            "name": "ovpn",
-            "type": "text",
-            "required": true        
-        },
-                {
-            "label": "VPN Username",
-            "name": "vpnUsername",
-            "type": "text",
-            "required": true        
-        },
-        {
-            "label": "VPN Password",
-            "name": "vpnPassword",
-            "type": "password",
-            "required": true        
-        }        
-    ]
+	"label": "HL7",
+	"name": "hl7",
+	"apiVersion": "v1",
+	"internal": false,
+	"configurationType": "GLOBAL",
+	"deployment": {
+		"type": "java11",
+		"profiles": [
+			{
+				"name": "default",
+				"label": "Default",
+				"memory": 512,
+				"offHeapMinFactor": 1.5,
+				"description": "Default configuration"
+			}
+		],
+		"allowMultipleInstances": false
+	},
+	"configurationHelpUrl": "/endpoints_hl7.html",
+	"status": "ACTIVE",
+	"stores": [],
+	"events": [
+		{
+			"label": "Message Arrived",
+			"name": "messageArrived",
+			"description": "When a new HL7 arrived."
+		}
+	],
+	"functions": [
+		{
+			"label": "Send Message",
+			"name": "_sendHl7Message"
+		}
+	],
+	"scripts": [
+		"helpers.js"
+	],
+	"configuration": [
+		{
+			"label": "Channels",
+			"name": "channels",
+			"type": "fieldsGroup",
+			"multiplicity": "many",
+			"required": true,
+			"showLabel": true,
+			"typeOptions": {
+				"fields": [
+					{
+						"label": "Name",
+						"name": "name",
+						"type": "text",
+						"multiplicity": "one",
+						"showLabel": true,
+						"required": true
+					},
+					{
+						"label": "Type",
+						"name": "type",
+						"type": "buttonsGroup",
+						"required": true,
+						"typeOptions": {
+							"possibleValues": [
+								{
+									"label": "Sender",
+									"name": "sender"
+								},
+								{
+									"label": "Receiver",
+									"name": "receiver"
+								}
+							]
+						}
+					},
+					{
+						"label": "IP",
+						"name": "ip",
+						"type": "text",
+						"multiplicity": "one",
+						"showLabel": true,
+						"required": false
+					},
+					{
+						"label": "Port",
+						"name": "port",
+						"type": "text",
+						"multiplicity": "one",
+						"showLabel": true,
+						"required": true
+					}
+				]
+			}
+		},
+		{
+			"label": "Connect to VPN",
+			"name": "connectToVpn",
+			"type": "toggle",
+			"defaultValue": true
+		},
+		{
+			"label": "OVPN",
+			"name": "ovpn",
+			"type": "text",
+			"required": true
+		},
+		{
+			"label": "VPN Username",
+			"name": "vpnUsername",
+			"type": "text",
+			"required": true
+		},
+		{
+			"label": "VPN Password",
+			"name": "vpnPassword",
+			"type": "password",
+			"required": true
+		}
+	]
 }
