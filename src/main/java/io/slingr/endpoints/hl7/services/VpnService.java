@@ -63,7 +63,7 @@ public class VpnService {
 		}
 	}
 
-	public void connectToVpn(String ovpnFilePath, String credentialsFilePath) {
+	public String connectToVpn(String ovpnFilePath, String credentialsFilePath) {
 		List<String> commandParams = new ArrayList<>();
 //		commandParams.add("sudo"); only for mac
 		commandParams.add("/usr/local/Cellar/openvpn/2.5.1/sbin/openvpn");
@@ -91,6 +91,7 @@ public class VpnService {
 			e.printStackTrace();
 		}
 		logger.info("VPN connection result " + result.toString());
+		return result.toString();
 	}
 
 	public void killVpnConnection() {

@@ -135,7 +135,7 @@ public class Hl7Endpoint extends Endpoint {
 	@Override
 	public void endpointStarted() {
 		appLogger.info("Initializing endpoint...");
-		appLogger.info("OVON received: " + ovpn);
+		appLogger.info("OVPN received: " + ovpn);
 		appLogger.info("Username: " + vpnUsername);
 		appLogger.info("Pass: " + vpnPassword);
 
@@ -144,7 +144,8 @@ public class Hl7Endpoint extends Endpoint {
         String ovpnFilePath = vpnService.createOvpnFile(ovpn);
 		String credentialsFilePath = vpnService.createLoginFile(vpnUsername, vpnPassword);
 		if (ovpnFilePath != null && credentialsFilePath != null) {
-			vpnService.connectToVpn(ovpnFilePath, credentialsFilePath);
+			String connectionResult = vpnService.connectToVpn(ovpnFilePath, credentialsFilePath);
+			appLogger.info("VPN Connection result: " + connectionResult);
 		} else {
 			appLogger.error("There was a fatal error creating the VPN configurations file");
 			endpointStopped("There was a fatal error creating the VPN configurations file");
