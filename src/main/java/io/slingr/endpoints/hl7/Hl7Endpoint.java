@@ -357,7 +357,7 @@ public class Hl7Endpoint extends Endpoint {
 	public String connectToVpn(String ovpnFilePath, String credentialsFilePath) {
 		List<String> commandParams = new ArrayList<>();
 //		commandParams.add("sudo"); only for mac
-		commandParams.add("/usr/local/Cellar/openvpn/2.5.1/sbin/openvpn");
+		commandParams.add("openvpn");
 		commandParams.add("--config");
 		commandParams.add(ovpnFilePath);
 		commandParams.add("--verb");
