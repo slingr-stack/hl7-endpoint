@@ -79,7 +79,7 @@ public class VpnService {
 		StringBuilder result = new StringBuilder(80);
 		try {
 			Runtime rt = Runtime.getRuntime();
-			Process pr = rt.exec("/usr/local/Cellar/openvpn/2.5.1/sbin/openvpn --config " + ovpnFilePath + " --verb 6 --auth-user-pass " + credentialsFilePath);			
+			Process pr = rt.exec("openvpn --config " + ovpnFilePath + " --verb 6 --auth-user-pass " + credentialsFilePath);			
 			
 //			ProcessBuilder pb = new ProcessBuilder(commandParams).redirectErrorStream(true);
 //			Process process = pb.start();
