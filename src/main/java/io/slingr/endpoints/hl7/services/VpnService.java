@@ -66,28 +66,31 @@ public class VpnService {
 	}
 
 	public String connectToVpn(String ovpnFilePath, String credentialsFilePath) {
-		List<String> commandParams = new ArrayList<>();
-//		commandParams.add("sudo"); only for mac
-		commandParams.add("openvpn");
-		commandParams.add("--config");
-		commandParams.add(ovpnFilePath);
-		commandParams.add("--verb");
-		commandParams.add("6");
-		commandParams.add("--auth-user-pass");
-		commandParams.add(credentialsFilePath);
+//		List<String> commandParams = new ArrayList<>();
+//		commandParams.add("openvpn");
+//		commandParams.add("/usr/local/Cellar/openvpn/2.5.1/sbin/openvpn");		
+//		commandParams.add("--config");
+//		commandParams.add(ovpnFilePath);
+//		commandParams.add("--verb");
+//		commandParams.add("6");
+//		commandParams.add("--auth-user-pass");
+//		commandParams.add(credentialsFilePath);
 
 		StringBuilder result = new StringBuilder(80);
 		try {
-			ProcessBuilder pb = new ProcessBuilder(commandParams).redirectErrorStream(true);
-			Process process = pb.start();
-			try (BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-				while (true) {
-					String line = in.readLine();
-					if (line == null)
-						break;
-					result.append(line).append(NEW_LINE);
-				}
-			}
+			Runtime rt = Runtime.getRuntime();
+			Process pr = rt.exec("/usr/local/Cellar/openvpn/2.5.1/sbin/openvpn --config " + ovpnFilePath + " --verb 6 --auth-user-pass " + credentialsFilePath);			
+			
+//			ProcessBuilder pb = new ProcessBuilder(commandParams).redirectErrorStream(true);
+//			Process process = pb.start();
+//			try (BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+//				while (true) {
+//					String line = in.readLine();
+//					if (line == null)
+//						break;
+//					result.append(line).append(NEW_LINE);
+//				}
+//			}
 		} catch (IOException e) {
 			logger.error("An error occurred while connecting to the VPN.");
 			e.printStackTrace();
