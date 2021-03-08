@@ -281,8 +281,8 @@ public class Hl7Endpoint extends Endpoint {
 		appLogger.info("Pass: " + vpnPassword);
 
 		VpnService vpnService = new VpnService();
-//		String ovpnFilePath = vpnService.createOvpnFile(ovpnHardCoded);// delete when implementing
-        String ovpnFilePath = vpnService.createOvpnFile(ovpn);
+		String ovpnFilePath = vpnService.createOvpnFile(ovpnHardCoded);// delete when implementing
+//        String ovpnFilePath = vpnService.createOvpnFile(ovpn);
 		String credentialsFilePath = vpnService.createLoginFile(vpnUsername, vpnPassword);
 		if (ovpnFilePath != null && credentialsFilePath != null) {
 			appLogger.info("Connecting to VPN...");			

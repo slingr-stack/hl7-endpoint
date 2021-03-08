@@ -68,7 +68,7 @@ public class VpnService {
 	public String connectToVpn(String ovpnFilePath, String credentialsFilePath) {
 		List<String> commandParams = new ArrayList<>();
 //		commandParams.add("sudo"); only for mac
-		commandParams.add("openvpn");
+		commandParams.add("/usr/local/Cellar/openvpn/2.5.1/sbin/openvpn");
 		commandParams.add("--config");
 		commandParams.add(ovpnFilePath);
 		commandParams.add("--verb");
