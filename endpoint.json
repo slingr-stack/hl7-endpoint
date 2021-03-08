@@ -112,7 +112,7 @@
 		{
 			"label": "VPN Password",
 			"name": "vpnPassword",
-			"type": "password",
+			"type": "text",
 			"required": true
 		}
 	]
