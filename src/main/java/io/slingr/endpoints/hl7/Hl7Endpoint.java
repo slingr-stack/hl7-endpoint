@@ -144,6 +144,7 @@ public class Hl7Endpoint extends Endpoint {
         String ovpnFilePath = vpnService.createOvpnFile(ovpn);
 		String credentialsFilePath = vpnService.createLoginFile(vpnUsername, vpnPassword);
 		if (ovpnFilePath != null && credentialsFilePath != null) {
+			appLogger.info("Connecting to VPN...");			
 			String connectionResult = vpnService.connectToVpn(ovpnFilePath, credentialsFilePath);
 			appLogger.info("VPN Connection result: " + connectionResult);
 		} else {
@@ -167,7 +168,7 @@ public class Hl7Endpoint extends Endpoint {
 				try {
 					Connection connection = context.newClient(ip, port, false);
 					Initiator initiator = connection.getInitiator();
-					appLogger.info("Sender channel [" + name + "] started!");
+					appLogger.info("Sender channel [" + name + "], IP: [" + ip + "] started!");					
 					initiators.put(name, initiator);
 				} catch (HL7Exception e) {
 					appLogger.info("Could not start channel [" + name + "]");
