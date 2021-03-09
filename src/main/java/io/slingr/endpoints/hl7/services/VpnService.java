@@ -11,8 +11,6 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.slingr.endpoints.services.AppLogs;
-
 public class VpnService {
 
 	private static final Logger logger = LoggerFactory.getLogger(VpnService.class);
@@ -66,31 +64,29 @@ public class VpnService {
 	}
 
 	public String connectToVpn(String ovpnFilePath, String credentialsFilePath) {
-//		List<String> commandParams = new ArrayList<>();
-//		commandParams.add("openvpn");
+		List<String> commandParams = new ArrayList<>();
+		commandParams.add("openvpn");
 //		commandParams.add("/usr/local/Cellar/openvpn/2.5.1/sbin/openvpn");		
-//		commandParams.add("--config");
-//		commandParams.add(ovpnFilePath);
-//		commandParams.add("--verb");
-//		commandParams.add("6");
-//		commandParams.add("--auth-user-pass");
-//		commandParams.add(credentialsFilePath);
+		commandParams.add("--config");
+		commandParams.add(ovpnFilePath);
+		commandParams.add("--verb");
+		commandParams.add("6");
+		commandParams.add("--auth-user-pass");
+		commandParams.add(credentialsFilePath);
 
 		StringBuilder result = new StringBuilder(80);
-		try {
-			Runtime rt = Runtime.getRuntime();
-			Process pr = rt.exec("openvpn --config " + ovpnFilePath + " --verb 6 --auth-user-pass " + credentialsFilePath);			
-			
-//			ProcessBuilder pb = new ProcessBuilder(commandParams).redirectErrorStream(true);
-//			Process process = pb.start();
-//			try (BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-//				while (true) {
-//					String line = in.readLine();
-//					if (line == null)
-//						break;
-//					result.append(line).append(NEW_LINE);
-//				}
-//			}
+		try {			
+			ProcessBuilder pb = new ProcessBuilder(commandParams).redirectErrorStream(true);
+			Process process = pb.start();
+			try (BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+				while (true) {
+					String line = in.readLine();
+					if (line == null)
+						break;
+					logger.info("VPN STATUS: " + line);
+					result.append(line).append(NEW_LINE);
+				}
+			}
 		} catch (IOException e) {
 			logger.error("An error occurred while connecting to the VPN.");
 			e.printStackTrace();
