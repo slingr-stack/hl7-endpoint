@@ -9,19 +9,28 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class VpnConnectionThread extends Thread {
+public class VpnConnectionThread implements Runnable {
 
 	private static final Logger logger = LoggerFactory.getLogger(VpnConnectionThread.class);
 	private static final String NEW_LINE = System.getProperty("line.separator");
 
-	public void run(String ovpnFilePath, String credentialsFilePath) {
+	private String ovpnFilePath;
+	private String credentialsFilePath;
+
+	public VpnConnectionThread(String ovpnFilePath, String credentialsFilePath) {
+		this.ovpnFilePath = ovpnFilePath;
+		this.credentialsFilePath = credentialsFilePath;
+	}
+
+	@Override
+	public void run() {
 		logger.info("THE VPN THREAD IS RUNNING");
 
 		List<String> vpnConnectioncommandParams = new ArrayList<>();
 
-    		scriptDocker();
+		scriptDocker();
 
-    		vpnConnectioncommandParams.add("openvpn");
+		vpnConnectioncommandParams.add("openvpn");
 //		vpnConnectioncommandParams.add("/usr/local/Cellar/openvpn/2.5.1/sbin/openvpn");
 		vpnConnectioncommandParams.add("--config");
 		vpnConnectioncommandParams.add(ovpnFilePath);
@@ -49,6 +58,7 @@ public class VpnConnectionThread extends Thread {
 		}
 		logger.info("VPN connection result " + result.toString());
 	}
+
 	public void scriptDocker() {
 		List<String> vpnConnectionScript1commandParams = new ArrayList<>();
 		List<String> vpnConnectionScript2commandParams = new ArrayList<>();
@@ -85,5 +95,6 @@ public class VpnConnectionThread extends Thread {
 			logger.error("An error occurred while executing linux commands.");
 			e.printStackTrace();
 		}
-	}	
+	}
+
 }
