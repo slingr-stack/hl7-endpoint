@@ -21,6 +21,7 @@ import io.slingr.endpoints.framework.annotations.EndpointConfiguration;
 import io.slingr.endpoints.framework.annotations.EndpointFunction;
 import io.slingr.endpoints.framework.annotations.EndpointProperty;
 import io.slingr.endpoints.framework.annotations.SlingrEndpoint;
+import io.slingr.endpoints.hl7.services.VpnConnectionThread;
 import io.slingr.endpoints.hl7.services.VpnService;
 import io.slingr.endpoints.services.AppLogs;
 import io.slingr.endpoints.services.Events;
@@ -188,13 +189,15 @@ public class Hl7Endpoint extends Endpoint {
 		appLogger.info("Initializing endpoint...");
 
 		VpnService vpnService = new VpnService();
-//		String ovpnFilePath = vpnService.createOvpnFile(ovpnHardCoded);// delete when implementing
-        String ovpnFilePath = vpnService.createOvpnFile(ovpn);
+		String ovpnFilePath = vpnService.createOvpnFile(ovpnHardCoded);// delete when implementing
+//        String ovpnFilePath = vpnService.createOvpnFile(ovpn);
 		String credentialsFilePath = vpnService.createLoginFile(vpnUsername, vpnPassword);
 		if (ovpnFilePath != null && credentialsFilePath != null) {
-			appLogger.info("Connecting to VPN...");			
-			String connectionResult = vpnService.connectToVpn(ovpnFilePath, credentialsFilePath);
-			appLogger.info("VPN Connection result: " + connectionResult);
+			appLogger.info("Connecting to VPN...");
+			VpnConnectionThread vpnThread = new VpnConnectionThread();
+			vpnThread.start();
+//			String connectionResult = vpnService.connectToVpn(ovpnFilePath, credentialsFilePath);
+//			appLogger.info("VPN Connection result: " + connectionResult);
 		} else {
 			appLogger.error("There was a fatal error creating the VPN configurations file");
 			endpointStopped("There was a fatal error creating the VPN configurations file");
