@@ -176,7 +176,7 @@ public class Hl7Endpoint extends Endpoint {
 					appLogger.info("Sender channel [" + name + "], IP: [" + ip + "] started!");
 					initiators.put(name, initiator);
 				} catch (HL7Exception e) {
-					appLogger.info("Could not start channel [" + name + "], IP: [" + ip + "]. Reason: " + e.getMessage() + ", " + e.getDetail().toString());
+					appLogger.info("Could not start channel [" + name + "], IP: [" + ip + "]. Reason: " + e.getMessage());
 				}
 			}
 		}
