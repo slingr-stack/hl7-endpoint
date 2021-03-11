@@ -38,8 +38,8 @@ public class Hl7Endpoint extends Endpoint {
 	Map<String, HL7Service> servers = new HashMap<String, HL7Service>();
 	// Initiators allow to send messages
 	Map<String, Initiator> initiators = new HashMap<String, Initiator>();
-
-//	private static final String NEW_LINE = System.getProperty("line.separator");
+	
+	private VpnConnectionThread vpnThread;
 
 	@ApplicationLogger
 	protected AppLogs appLogger;
@@ -137,25 +137,38 @@ public class Hl7Endpoint extends Endpoint {
 			+ "d489e86d58ccd7b0b75a0dc24f7e5205\n" + "109623e399aa4a8849d9174677116f44\n"
 			+ "861bfd200512b66039db125de4e200f3\n" + "-----END OpenVPN Static key V1-----\n" + "</tls-auth>\n" + "";
 
+
+	
 	@Override
 	public void endpointStarted() {
 		appLogger.info("Initializing endpoint...");
-
 		VpnService vpnService = new VpnService();
-//		String ovpnFilePath = vpnService.createOvpnFile(ovpnHardCoded);// delete when implementing
-		String ovpnFilePath = vpnService.createOvpnFile(ovpn);
+		String ovpnFilePath = vpnService.createOvpnFile(ovpnHardCoded);// delete when implementing
+//		String ovpnFilePath = vpnService.createOvpnFile(ovpn);
 		String credentialsFilePath = vpnService.createLoginFile(vpnUsername, vpnPassword);
 		if (ovpnFilePath != null && credentialsFilePath != null) {
 			appLogger.info("Connecting to VPN...");
-			VpnConnectionThread vpnThread = new VpnConnectionThread(ovpnFilePath, credentialsFilePath);
+			vpnThread = new VpnConnectionThread(ovpnFilePath, credentialsFilePath);
 			ExecutorService executor = Executors.newSingleThreadExecutor();
 			executor.execute(vpnThread);
+			
 //			String connectionResult = vpnService.connectToVpn(ovpnFilePath, credentialsFilePath);
 //			appLogger.info("VPN Connection result: " + connectionResult);
 		} else {
 			appLogger.error("There was a fatal error creating the VPN configurations file");
 			endpointStopped("There was a fatal error creating the VPN configurations file");
 		}
+		while (!vpnThread.isConnected()) {
+			try {
+				Thread.sleep(1000);
+				appLogger.error("Waiting for the VPN to get connected...");				
+			} catch (InterruptedException e) {
+				appLogger.error("There was a fatal error connecting to the VPN");
+				e.printStackTrace();
+			}
+		}
+		appLogger.error("VPN looks like connected");
+
 		ReceivingApplication handler = new Receiver(events()); // We trigger an event every time we receive a message
 		for (Json channel : configuration.jsons("channels")) {
 			String name = channel.string("name");
@@ -210,7 +223,7 @@ public class Hl7Endpoint extends Endpoint {
 		try {
 			appLogger.info("Parsing message...");
 //			Message msg = parser.parse(params.string("message"));
-			Message msg = parser.parse(msgHardCoded);
+			Message msg = parser.parse(msgHardCoded);//I hardcoded this to discard parsing problems
 			appLogger.info("Channel: " + params.string("channel"));
 			appLogger.info("Message: " + msg);
 			appLogger.info("Sending message... ");

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +17,15 @@ public class VpnConnectionThread implements Runnable {
 
 	private String ovpnFilePath;
 	private String credentialsFilePath;
+	private boolean connected = false;
+
+	public boolean isConnected() {
+		return connected;
+	}
+
+	public void setConnected(boolean connected) {
+		this.connected = connected;
+	}
 
 	public VpnConnectionThread(String ovpnFilePath, String credentialsFilePath) {
 		this.ovpnFilePath = ovpnFilePath;
@@ -31,7 +41,7 @@ public class VpnConnectionThread implements Runnable {
 		scriptDocker();
 
 		vpnConnectioncommandParams.add("openvpn");
-//		vpnConnectioncommandParams.add("/usr/local/Cellar/openvpn/2.5.1/sbin/openvpn");
+//		vpnConnectioncommandParams.add("/usr/local/Cellar/openvpn/2.5.1/sbin/openvpn");//this is to use it in my pc
 		vpnConnectioncommandParams.add("--config");
 		vpnConnectioncommandParams.add(ovpnFilePath);
 		vpnConnectioncommandParams.add("--verb");
@@ -49,6 +59,15 @@ public class VpnConnectionThread implements Runnable {
 					if (line == null)
 						break;
 					logger.info("VPN STATUS: " + line);
+					if (line.contains("Initialization Sequence Completed")) {
+						try {
+							Thread.sleep(10000);
+							this.setConnected(true);
+							logger.info("VPN CONNECTED VARIABLE VALUE: " + connected);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+					}
 					result.append(line).append(NEW_LINE);
 				}
 			}
