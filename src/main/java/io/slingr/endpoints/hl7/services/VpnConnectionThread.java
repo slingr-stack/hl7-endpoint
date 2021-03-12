@@ -20,10 +20,10 @@ public class VpnConnectionThread implements Runnable {
 	private String ovpnFilePath;
 	private String credentialsFilePath;
 	private AppLogs appLogger;
-	private AtomicBoolean connected = new AtomicBoolean(false);
+	private boolean connected = false;
 
 	public boolean isConnected() {
-		return connected.get();
+		return connected;
 	}
 
 	public VpnConnectionThread(String ovpnFilePath, String credentialsFilePath, AppLogs appLogger) {
@@ -38,10 +38,10 @@ public class VpnConnectionThread implements Runnable {
 
 		List<String> vpnConnectioncommandParams = new ArrayList<>();
 
-		scriptDocker();
+//		scriptDocker();
 
-		vpnConnectioncommandParams.add("openvpn");
-//		vpnConnectioncommandParams.add("/usr/local/Cellar/openvpn/2.5.1/sbin/openvpn");//this is to use it in my pc
+//		vpnConnectioncommandParams.add("openvpn");
+		vpnConnectioncommandParams.add("/usr/local/Cellar/openvpn/2.5.1/sbin/openvpn");//this is to use it in my pc
 		vpnConnectioncommandParams.add("--config");
 		vpnConnectioncommandParams.add(ovpnFilePath);
 		vpnConnectioncommandParams.add("--verb");
@@ -62,7 +62,7 @@ public class VpnConnectionThread implements Runnable {
 					if (line.contains("Initialization Sequence Completed")) {
 						try {
 							Thread.sleep(10000);
-							this.connected.set(true);
+							this.connected = true;
 							logger.info("VPN CONNECTED VARIABLE VALUE: " + connected);
 						} catch (InterruptedException e) {
 							e.printStackTrace();
