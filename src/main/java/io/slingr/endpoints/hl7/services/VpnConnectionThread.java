@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,10 +37,10 @@ public class VpnConnectionThread implements Runnable {
 
 		List<String> vpnConnectioncommandParams = new ArrayList<>();
 
-//		scriptDocker();
+		scriptDocker();
 
-//		vpnConnectioncommandParams.add("openvpn");
-		vpnConnectioncommandParams.add("/usr/local/Cellar/openvpn/2.5.1/sbin/openvpn");//this is to use it in my pc
+		vpnConnectioncommandParams.add("openvpn");
+//		vpnConnectioncommandParams.add("/usr/local/Cellar/openvpn/2.5.1/sbin/openvpn");//this is to use it in my pc
 		vpnConnectioncommandParams.add("--config");
 		vpnConnectioncommandParams.add(ovpnFilePath);
 		vpnConnectioncommandParams.add("--verb");
@@ -72,7 +71,7 @@ public class VpnConnectionThread implements Runnable {
 				}
 			}
 		} catch (IOException e) {
-			appLogger.error("An error occurred while connecting to the VPN.");
+			appLogger.error("An error occurred while connecting to the VPN: " + e);
 			e.printStackTrace();
 		}
 		appLogger.info("VPN connection result " + result.toString());
