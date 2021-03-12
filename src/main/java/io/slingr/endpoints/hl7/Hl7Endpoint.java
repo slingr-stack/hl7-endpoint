@@ -52,7 +52,7 @@ public class Hl7Endpoint extends Endpoint {
 	protected AppLogs appLogger;
 
 	@EndpointProperty
-	private boolean connectToVpn;
+	private Boolean connectToVpn;
 
 	@EndpointProperty
 	private String vpnUsername;

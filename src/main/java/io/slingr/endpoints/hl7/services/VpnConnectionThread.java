@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,10 +20,10 @@ public class VpnConnectionThread implements Runnable {
 	private String ovpnFilePath;
 	private String credentialsFilePath;
 	private AppLogs appLogger;
-	private boolean connected = false;
+	private AtomicBoolean connected = new AtomicBoolean(false);
 
 	public boolean isConnected() {
-		return connected;
+		return connected.get();
 	}
 
 	public VpnConnectionThread(String ovpnFilePath, String credentialsFilePath, AppLogs appLogger) {
