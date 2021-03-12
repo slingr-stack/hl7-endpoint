@@ -20,10 +20,10 @@ public class VpnConnectionThread implements Runnable {
 	private String ovpnFilePath;
 	private String credentialsFilePath;
 	private AppLogs appLogger;
-	private AtomicBoolean connected = new AtomicBoolean(false);
+	private boolean connected = false;
 
 	public boolean isConnected() {
-		return connected.get();
+		return connected;
 	}
 
 	public VpnConnectionThread(String ovpnFilePath, String credentialsFilePath, AppLogs appLogger) {
