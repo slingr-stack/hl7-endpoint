@@ -34,7 +34,7 @@ import io.slingr.endpoints.utils.Json;
 
 @SlingrEndpoint(name = "hl7")
 public class Hl7Endpoint extends Endpoint {
-	
+
 	@SuppressWarnings("unused")
 	private static final Logger logger = LoggerFactory.getLogger(Hl7Endpoint.class);
 
@@ -52,7 +52,7 @@ public class Hl7Endpoint extends Endpoint {
 	protected AppLogs appLogger;
 
 	@EndpointProperty
-	private String connectToVpn;
+	private boolean connectToVpn;
 
 	@EndpointProperty
 	private String vpnUsername;
@@ -72,6 +72,9 @@ public class Hl7Endpoint extends Endpoint {
 	@Override
 	public void endpointStarted() {
 		appLogger.info("Initializing endpoint...");
+		if (!connectToVpn) {
+			endpointStopped("The VPN connection option is disabled. Please check the endpoint configuration.");
+		}
 		VpnService vpnService = new VpnService();
 		String ovpnFilePath = vpnService.createOvpnFile(ovpn);
 		String credentialsFilePath = vpnService.createLoginFile(vpnUsername, vpnPassword);
@@ -96,6 +99,7 @@ public class Hl7Endpoint extends Endpoint {
 		for (Json channel : configuration.jsons("channels")) {
 			String name = channel.string("name");
 			String type = channel.string("type");
+			String ip = channel.string("ip");
 			int port = Integer.parseInt(channel.string("port"));
 
 			if (type.equals("receiver")) {
@@ -128,7 +132,7 @@ public class Hl7Endpoint extends Endpoint {
 	@Override
 	public void endpointStopped(String cause) {
 		VpnService vpnService = new VpnService();
-		appLogger.info("Stopping servers...");
+		appLogger.info("Stopping servers...Reason: " + cause);
 		for (HL7Service server : servers.values()) {
 			server.stop();
 		}
@@ -142,64 +146,29 @@ public class Hl7Endpoint extends Endpoint {
 		Parser parser = context.getPipeParser();
 		String responseString = "";
 		try {
-			Connection connection = connectSenderServer(params.string("channel"));
 			appLogger.info("Parsing message...");
 			Message msg = parser.parse(params.string("message"));
 			appLogger.info("Channel: " + params.string("channel"));
 			appLogger.info("Sending message... ");
 			Initiator init = initiators.get(params.string("channel"));
 			if (init != null) {
-			Message response = init.sendAndReceive(msg);
-			responseString = parser.encode(response);
-			appLogger.info("Message sent!");
+				Message response = init.sendAndReceive(msg);
+				responseString = parser.encode(response);
+				appLogger.info("Message sent!");
 			} else {
 				throw new Exception("Server not found, please check the endpoint configuration");
 			}
 		} catch (HL7Exception e) {
-			appLogger.info("HL7 exception: " + e.getMessage());
+			appLogger.error("HL7 exception: " + e.getMessage());
 			e.printStackTrace();
 		} catch (LLPException e) {
-			appLogger.info("LLP exception: " + e.getMessage());
+			appLogger.error("LLP exception: " + e.getMessage());
 			e.printStackTrace();
 		} catch (IOException e) {
-			appLogger.info("IO exception: " + e.getMessage());
+			appLogger.error("IO exception: " + e.getMessage());
 			e.printStackTrace();
 		}
 		return responseString;
-		} else {
-			throw new Exception("Message cannot be sent because VPN is not connected!");
-		}
-	}
-
-	public Connection connectSenderServer(String serverName) throws IOException {
-		boolean senderServerIsConnected = false;
-		Connection connection = null;
-		String ip = null;
-		int port = 0;
-		while (!senderServerIsConnected) {
-			try {
-				for (Json channel : configuration.jsons("channels")) {
-					if (channel.string("name").equals(serverName)) {
-						ip = channel.string("ip");
-						port = Integer.parseInt(channel.string("port"));
-						break;
-					}
-					throw new IOException(
-							"The selected server does not exist. Please check the endpoint configuration");
-				}
-				Thread.sleep(1000);
-				appLogger.info("Attempting to connect to sender channel [" + serverName + "], IP: [" + ip + "].");
-				connection = context.newClient(ip, port, false);
-				Initiator initiator = connection.getInitiator();
-				appLogger.info("Sender channel [" + serverName + "], IP: [" + ip + "] started in port [" + port + "]!");
-				initiators.put(serverName, initiator);
-				senderServerIsConnected = true;
-			} catch (HL7Exception | InterruptedException e) {
-				appLogger.info(
-						"Could not start channel [" + serverName + "], IP: [" + ip + "]. Reason: " + e.getMessage());
-			}
-		}
-		return connection;
 	}
 }
 
