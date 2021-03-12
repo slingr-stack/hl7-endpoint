@@ -38,7 +38,6 @@ public class VpnConnectionThread implements Runnable {
 		List<String> vpnConnectioncommandParams = new ArrayList<>();
 
 		scriptDocker();
-
 		vpnConnectioncommandParams.add("openvpn");
 		vpnConnectioncommandParams.add("--config");
 		vpnConnectioncommandParams.add(ovpnFilePath);
@@ -47,8 +46,8 @@ public class VpnConnectionThread implements Runnable {
 		vpnConnectioncommandParams.add("--auth-user-pass");
 		vpnConnectioncommandParams.add(credentialsFilePath);
 
-
-		while (!isConnected()) {//openvpn has its own reconnection system. We implemented ours in case it fails.
+		while (!isConnected()) {// openvpn has its own reconnection system. We implemented ours in case it
+								// fails.
 			appLogger.info("Start VPN connection...");
 			StringBuilder result = new StringBuilder(80);
 			try {
