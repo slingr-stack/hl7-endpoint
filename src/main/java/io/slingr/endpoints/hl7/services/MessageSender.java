@@ -56,7 +56,6 @@ public class MessageSender implements Runnable {
 					Thread.sleep(2000);
 					appLogger.info("Attempting to connect to sender channel [" + serverName + "], IP: [" + ip + "].");
 					connection = context.newClient(ip, port, false);
-					connection.activate();
 					initiator = connection.getInitiator();
 					appLogger.info(
 							"Sender channel [" + serverName + "], IP: [" + ip + "] started in port [" + port + "]!");
