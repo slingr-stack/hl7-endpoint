@@ -96,7 +96,6 @@ public class Hl7Endpoint extends Endpoint {
 		for (Json channel : configuration.jsons("channels")) {
 			String name = channel.string("name");
 			String type = channel.string("type");
-			String ip = channel.string("ip");
 			int port = Integer.parseInt(channel.string("port"));
 
 			if (type.equals("receiver")) {
