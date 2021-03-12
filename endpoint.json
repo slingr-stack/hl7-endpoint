@@ -101,7 +101,10 @@
 			"label": "OVPN",
 			"name": "ovpn",
 			"type": "text",
-			"required": true
+			"typeOptions": {
+				"representation":"textArea",
+				"numberOfRows":6},
+			"required":true
 		},
 		{
 			"label": "VPN Username",

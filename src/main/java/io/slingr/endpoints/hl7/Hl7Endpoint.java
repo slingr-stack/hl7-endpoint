@@ -155,7 +155,7 @@ public class Hl7Endpoint extends Endpoint {
 		}
 		while (!vpnThread.isConnected()) {
 			try {
-				Thread.sleep(1000);
+				Thread.sleep(3000);
 				appLogger.info("Waiting for the VPN to get connected...");
 			} catch (InterruptedException e) {
 				appLogger.error("There was a fatal error connecting to the VPN");
@@ -174,7 +174,7 @@ public class Hl7Endpoint extends Endpoint {
 				HL7Service server = context.newServer(port, false);
 				server.registerApplication("*", "*", handler); // Support all message types
 				server.start();
-				appLogger.info("Receiver channel [" + name + "] started!");
+				appLogger.info("Receiver channel [" + name + "] started in port [" + port + "]!");
 				servers.put(name, server);
 			} else {
 				boolean senderServerIsConnected = false;
@@ -184,7 +184,7 @@ public class Hl7Endpoint extends Endpoint {
 						appLogger.info("Attempting to connect to sender channel [" + name + "], IP: [" + ip + "].");
 						Connection connection = context.newClient(ip, port, false);
 						Initiator initiator = connection.getInitiator();
-						appLogger.info("Sender channel [" + name + "], IP: [" + ip + "] started!");
+						appLogger.info("Sender channel [" + name + "], IP: [" + ip + "] started in port [" + port + "]!");
 						initiators.put(name, initiator);
 						senderServerIsConnected = true;
 					} catch (HL7Exception | InterruptedException e) {
