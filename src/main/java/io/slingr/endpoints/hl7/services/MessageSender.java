@@ -69,6 +69,9 @@ public class MessageSender implements Runnable {
 			try {
 				Thread.sleep(10000);
 				serverConnected.set(connection.isOpen());
+				if (!connection.isOpen()) {
+					connection.close();
+				}
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
