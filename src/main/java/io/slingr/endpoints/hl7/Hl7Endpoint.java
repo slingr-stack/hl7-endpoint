@@ -143,6 +143,7 @@ public class Hl7Endpoint extends Endpoint {
 		Parser parser = context.getPipeParser();
 		String responseString = "";
 		try {
+			Connection connection = connectSenderServer(params.string("channel"));
 			appLogger.info("Parsing message...");
 			Message msg = parser.parse(params.string("message"));
 			appLogger.info("Channel: " + params.string("channel"));
@@ -166,6 +167,40 @@ public class Hl7Endpoint extends Endpoint {
 			e.printStackTrace();
 		}
 		return responseString;
+		} else {
+			throw new Exception("Message cannot be sent because VPN is not connected!");
+		}
+	}
+
+	public Connection connectSenderServer(String serverName) throws IOException {
+		boolean senderServerIsConnected = false;
+		Connection connection = null;
+		String ip = null;
+		int port = 0;
+		while (!senderServerIsConnected) {
+			try {
+				for (Json channel : configuration.jsons("channels")) {
+					if (channel.string("name").equals(serverName)) {
+						ip = channel.string("ip");
+						port = Integer.parseInt(channel.string("port"));
+						break;
+					}
+					throw new IOException(
+							"The selected server does not exist. Please check the endpoint configuration");
+				}
+				Thread.sleep(1000);
+				appLogger.info("Attempting to connect to sender channel [" + serverName + "], IP: [" + ip + "].");
+				connection = context.newClient(ip, port, false);
+				Initiator initiator = connection.getInitiator();
+				appLogger.info("Sender channel [" + serverName + "], IP: [" + ip + "] started in port [" + port + "]!");
+				initiators.put(serverName, initiator);
+				senderServerIsConnected = true;
+			} catch (HL7Exception | InterruptedException e) {
+				appLogger.info(
+						"Could not start channel [" + serverName + "], IP: [" + ip + "]. Reason: " + e.getMessage());
+			}
+		}
+		return connection;
 	}
 }
 
