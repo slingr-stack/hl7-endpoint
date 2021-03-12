@@ -67,7 +67,6 @@ public class MessageSender implements Runnable {
 			}
 			try {
 				Thread.sleep(10000);
-				logger.info("Sender " + serverName + " server status open: " + connection.isOpen());
 				serverConnected.set(connection.isOpen());
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
@@ -75,5 +74,4 @@ public class MessageSender implements Runnable {
 			}
 		}
 	}
-
 }

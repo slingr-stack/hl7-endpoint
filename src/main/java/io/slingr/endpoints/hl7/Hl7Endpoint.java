@@ -6,6 +6,9 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import ca.uhn.hl7v2.DefaultHapiContext;
 import ca.uhn.hl7v2.HL7Exception;
 import ca.uhn.hl7v2.HapiContext;
@@ -31,6 +34,9 @@ import io.slingr.endpoints.utils.Json;
 
 @SlingrEndpoint(name = "hl7")
 public class Hl7Endpoint extends Endpoint {
+	
+	@SuppressWarnings("unused")
+	private static final Logger logger = LoggerFactory.getLogger(Hl7Endpoint.class);
 
 	// We use a HAPI context for pretty much everything
 	HapiContext context = new DefaultHapiContext();
@@ -104,6 +110,14 @@ public class Hl7Endpoint extends Endpoint {
 					MessageSender sender = new MessageSender(name, ip, port, appLogger);
 					ExecutorService SenderServerExecutor = Executors.newSingleThreadExecutor();
 					SenderServerExecutor.execute(sender);
+					while (!sender.isConnected()) {
+						try {
+							Thread.sleep(3000);
+							appLogger.info("Waiting for the " + name + " server to get connected...");
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+					}
 					if (sender.isConnected()) {
 						initiators.put(name, sender.getInitiator());
 					}
@@ -125,7 +139,7 @@ public class Hl7Endpoint extends Endpoint {
 	}
 
 	@EndpointFunction(name = "_sendHl7Message")
-	public String sendHl7Message(Json params) {
+	public String sendHl7Message(Json params) throws Exception {
 		Parser parser = context.getPipeParser();
 		String responseString = "";
 		try {
@@ -133,9 +147,14 @@ public class Hl7Endpoint extends Endpoint {
 			Message msg = parser.parse(params.string("message"));
 			appLogger.info("Channel: " + params.string("channel"));
 			appLogger.info("Sending message... ");
-			Message response = initiators.get(params.string("channel")).sendAndReceive(msg);
+			Initiator init = initiators.get(params.string("channel"));
+			if (init != null) {
+			Message response = init.sendAndReceive(msg);
 			responseString = parser.encode(response);
 			appLogger.info("Message sent!");
+			} else {
+				throw new Exception("Server not found, please check the endpoint configuration");
+			}
 		} catch (HL7Exception e) {
 			appLogger.info("HL7 exception: " + e.getMessage());
 			e.printStackTrace();
