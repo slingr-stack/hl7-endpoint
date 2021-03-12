@@ -176,22 +176,6 @@ public class Hl7Endpoint extends Endpoint {
 				server.start();
 				appLogger.info("Receiver channel [" + name + "] started in port [" + port + "]!");
 				servers.put(name, server);
-			} else {
-				boolean senderServerIsConnected = false;
-				while (!senderServerIsConnected) {
-					try {
-						Thread.sleep(1000);
-						appLogger.info("Attempting to connect to sender channel [" + name + "], IP: [" + ip + "].");
-						Connection connection = context.newClient(ip, port, false);
-						Initiator initiator = connection.getInitiator();
-						appLogger.info("Sender channel [" + name + "], IP: [" + ip + "] started in port [" + port + "]!");
-						initiators.put(name, initiator);
-						senderServerIsConnected = true;
-					} catch (HL7Exception | InterruptedException e) {
-						appLogger.info(
-								"Could not start channel [" + name + "], IP: [" + ip + "]. Reason: " + e.getMessage());
-					}
-				}
 			}
 		}
 	}
@@ -209,7 +193,8 @@ public class Hl7Endpoint extends Endpoint {
 	}
 
 	@EndpointFunction(name = "_sendHl7Message")
-	public String sendHl7Message(Json params) {
+	public String sendHl7Message(Json params) throws Exception {
+		if (vpnThread.isConnected()) {
 		Parser parser = context.getPipeParser();
 		String responseString = "";
 		String msgHardCoded = "MSH|^~\\&|HIS|RIH|EKG|EKG|199904140038||ADT^A01|12345|P|2.2\r"
@@ -221,6 +206,7 @@ public class Hl7Endpoint extends Endpoint {
 				+ "GT1||0222PL|NOTREAL^BOB^B||STREET^OTHER STREET^CITY^ST^77787|(444)999-3333|(222)777-5555||||MO|111-33-5555||||NOTREAL GILL N|STREET^OTHER STREET^CITY^ST^99999|(111)222-3333\r"
 				+ "IN1||022254P|4558PD|BLUE CROSS|STREET^OTHER STREET^CITY^ST^00990||(333)333-6666||221K|LENIX|||19980515|19990515|||PATIENT01 TEST D||||||||||||||||||02LL|022LP554";
 		try {
+			Connection connection = connectSenderServer(params.string("channel"));
 			appLogger.info("Parsing message...");
 //			Message msg = parser.parse(params.string("message"));
 			Message msg = parser.parse(msgHardCoded);// I hardcoded this to discard parsing problems
@@ -230,6 +216,8 @@ public class Hl7Endpoint extends Endpoint {
 			Message response = initiators.get(params.string("channel")).sendAndReceive(msg);
 			responseString = parser.encode(response);
 			appLogger.info("Message sent!");
+			connection.close();
+			appLogger.info("Sender server disconnected!");
 		} catch (HL7Exception e) {
 			appLogger.info("HL7 exception");
 			e.printStackTrace();
@@ -241,6 +229,40 @@ public class Hl7Endpoint extends Endpoint {
 			e.printStackTrace();
 		}
 		return responseString;
+		} else {
+			throw new Exception("Message cannot be sent because VPN is not connected!");
+		}
+	}
+
+	public Connection connectSenderServer(String serverName) throws IOException {
+		boolean senderServerIsConnected = false;
+		Connection connection = null;
+		String ip = null;
+		int port = 0;
+		while (!senderServerIsConnected) {
+			try {
+				for (Json channel : configuration.jsons("channels")) {
+					if (channel.string("name").equals(serverName)) {
+						ip = channel.string("ip");
+						port = Integer.parseInt(channel.string("port"));
+						break;
+					}
+					throw new IOException(
+							"The selected server does not exist. Please check the endpoint configuration");
+				}
+				Thread.sleep(1000);
+				appLogger.info("Attempting to connect to sender channel [" + serverName + "], IP: [" + ip + "].");
+				connection = context.newClient(ip, port, false);
+				Initiator initiator = connection.getInitiator();
+				appLogger.info("Sender channel [" + serverName + "], IP: [" + ip + "] started in port [" + port + "]!");
+				initiators.put(serverName, initiator);
+				senderServerIsConnected = true;
+			} catch (HL7Exception | InterruptedException e) {
+				appLogger.info(
+						"Could not start channel [" + serverName + "], IP: [" + ip + "]. Reason: " + e.getMessage());
+			}
+		}
+		return connection;
 	}
 }
 

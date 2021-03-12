@@ -84,7 +84,10 @@
 						"label": "Port",
 						"name": "port",
 						"type": "text",
-						"multiplicity": "one",
+						"typeOptions": {
+							"validation":"number"
+							},
+						"multiplicity":"one",
 						"showLabel": true,
 						"required": true
 					}
@@ -102,9 +105,10 @@
 			"name": "ovpn",
 			"type": "text",
 			"typeOptions": {
-				"representation":"textArea",
-				"numberOfRows":6},
-			"required":true
+				"representation": "textArea",
+				"numberOfRows": 6
+			},
+			"required": true
 		},
 		{
 			"label": "VPN Username",
