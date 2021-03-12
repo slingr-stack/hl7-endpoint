@@ -1,5 +1,6 @@
 package io.slingr.endpoints.hl7.services;
 
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
@@ -18,7 +19,7 @@ public class MessageSender implements Runnable {
 	private static final Logger logger = LoggerFactory.getLogger(MessageSender.class);
 
 	// We use a HAPI context for pretty much everything
-	HapiContext context = new DefaultHapiContext();
+	HapiContext context;
 
 	private String serverName;
 	private String ip;
@@ -55,6 +56,7 @@ public class MessageSender implements Runnable {
 				try {
 					Thread.sleep(2000);
 					appLogger.info("Attempting to connect to sender channel [" + serverName + "], IP: [" + ip + "].");
+					context = new DefaultHapiContext();
 					connection = context.newClient(ip, port, false);
 					initiator = connection.getInitiator();
 					appLogger.info(
@@ -70,9 +72,9 @@ public class MessageSender implements Runnable {
 				Thread.sleep(10000);
 				serverConnected.set(connection.isOpen());
 				if (!connection.isOpen()) {
-					connection.close();
+					context.close();
 				}
-			} catch (InterruptedException e) {
+			} catch (InterruptedException | IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
