@@ -60,7 +60,7 @@ public class MessageSender implements Runnable {
 							"Sender channel [" + serverName + "], IP: [" + ip + "] started in port [" + port + "]!");
 					serverConnected.set(true);
 				} catch (HL7Exception | InterruptedException e) {
-					appLogger.info("Could not start channel [" + serverName + "], IP: [" + ip + "]. Reason: "
+					appLogger.error("Could not start channel [" + serverName + "], IP: [" + ip + "]. Reason: "
 							+ e.getMessage());
 				}
 
