@@ -10,6 +10,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.slingr.endpoints.services.AppLogs;
+
 public class VpnConnectionThread implements Runnable {
 
 	private static final Logger logger = LoggerFactory.getLogger(VpnConnectionThread.class);
@@ -17,19 +19,17 @@ public class VpnConnectionThread implements Runnable {
 
 	private String ovpnFilePath;
 	private String credentialsFilePath;
-	private boolean connected = false;
+	private AppLogs appLogger;
+	private AtomicBoolean connected = new AtomicBoolean(false);
 
 	public boolean isConnected() {
-		return connected;
+		return connected.get();
 	}
 
-	public void setConnected(boolean connected) {
-		this.connected = connected;
-	}
-
-	public VpnConnectionThread(String ovpnFilePath, String credentialsFilePath) {
+	public VpnConnectionThread(String ovpnFilePath, String credentialsFilePath, AppLogs appLogger) {
 		this.ovpnFilePath = ovpnFilePath;
 		this.credentialsFilePath = credentialsFilePath;
+		this.appLogger = appLogger;
 	}
 
 	@Override
@@ -62,7 +62,7 @@ public class VpnConnectionThread implements Runnable {
 					if (line.contains("Initialization Sequence Completed")) {
 						try {
 							Thread.sleep(10000);
-							this.setConnected(true);
+							this.connected.set(true);
 							logger.info("VPN CONNECTED VARIABLE VALUE: " + connected);
 						} catch (InterruptedException e) {
 							e.printStackTrace();
@@ -72,10 +72,10 @@ public class VpnConnectionThread implements Runnable {
 				}
 			}
 		} catch (IOException e) {
-			logger.error("An error occurred while connecting to the VPN.");
+			appLogger.error("An error occurred while connecting to the VPN.");
 			e.printStackTrace();
 		}
-		logger.info("VPN connection result " + result.toString());
+		appLogger.info("VPN connection result " + result.toString());
 	}
 
 	public void scriptDocker() {
