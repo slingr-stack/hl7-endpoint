@@ -41,7 +41,6 @@ public class VpnConnectionThread implements Runnable {
 		scriptDocker();
 
 		vpnConnectioncommandParams.add("openvpn");
-//		vpnConnectioncommandParams.add("/usr/local/Cellar/openvpn/2.5.1/sbin/openvpn");//this is to use it in my pc
 		vpnConnectioncommandParams.add("--config");
 		vpnConnectioncommandParams.add(ovpnFilePath);
 		vpnConnectioncommandParams.add("--verb");
@@ -49,33 +48,39 @@ public class VpnConnectionThread implements Runnable {
 		vpnConnectioncommandParams.add("--auth-user-pass");
 		vpnConnectioncommandParams.add(credentialsFilePath);
 
-		StringBuilder result = new StringBuilder(80);
-		try {
-			ProcessBuilder pbVpnConnection = new ProcessBuilder(vpnConnectioncommandParams).redirectErrorStream(true);
-			Process process = pbVpnConnection.start();
-			try (BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-				while (true) {
-					String line = in.readLine();
-					if (line == null)
-						break;
-					logger.info("VPN STATUS: " + line);
-					if (line.contains("Initialization Sequence Completed")) {
-						try {
-							Thread.sleep(10000);
+
+		while (!isConnected()) {//openvpn has its own reconnection system. We implemented ours in case it fails.
+			appLogger.info("Start VPN connection...");
+			StringBuilder result = new StringBuilder(80);
+			try {
+				ProcessBuilder pbVpnConnection = new ProcessBuilder(vpnConnectioncommandParams)
+						.redirectErrorStream(true);
+				Process process = pbVpnConnection.start();
+				try (BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+					while (true) {
+						String line = in.readLine();
+						if (line == null)
+							break;
+						logger.info("VPN STATUS: " + line);
+						if (line.contains("Initialization Sequence Completed")) {
 							this.connected.set(true);
-							logger.info("VPN CONNECTED VARIABLE VALUE: " + connected);
-						} catch (InterruptedException e) {
-							e.printStackTrace();
 						}
+						result.append(line).append(NEW_LINE);
 					}
-					result.append(line).append(NEW_LINE);
+					appLogger.info("VPN connection result " + result.toString());
+					// the VPN got disconnected
+					appLogger.info("VPN got disconnected. System will try to reconnect in a while...");
+					connected.set(false);
+					Thread.sleep(5000);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
+			} catch (IOException e) {
+				appLogger.error("An error occurred while connecting to the VPN: " + e.getMessage());
+				e.printStackTrace();
 			}
-		} catch (IOException e) {
-			appLogger.error("An error occurred while connecting to the VPN.");
-			e.printStackTrace();
 		}
-		appLogger.info("VPN connection result " + result.toString());
 	}
 
 	public void scriptDocker() {
@@ -111,7 +116,7 @@ public class VpnConnectionThread implements Runnable {
 			pbVpnScript3Connection.start();
 
 		} catch (IOException e) {
-			logger.error("An error occurred while executing linux commands.");
+			logger.error("An error occurred while executing linux commands: " + e.getMessage());
 			e.printStackTrace();
 		}
 	}
