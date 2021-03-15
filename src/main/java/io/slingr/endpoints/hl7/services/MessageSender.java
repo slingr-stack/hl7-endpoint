@@ -35,10 +35,16 @@ public class MessageSender implements Runnable {
 
 	private Initiator initiator;
 	private AtomicBoolean serverConnected = new AtomicBoolean(false);
+	private AtomicBoolean serverDown = new AtomicBoolean(false);
+
 	private Connection connection;
 
 	public boolean isConnected() {
 		return serverConnected.get();
+	}
+
+	public boolean gotDisconnected() {
+		return serverDown.get();
 	}
 
 	public Initiator getInitiator() {
@@ -47,6 +53,34 @@ public class MessageSender implements Runnable {
 
 	public void setInitiator(Initiator initiator) {
 		this.initiator = initiator;
+	}
+
+	public void interruptThread() {
+		Thread.currentThread().interrupt();
+	}
+
+	public String getServerName() {
+		return serverName;
+	}
+
+	public void setServerName(String serverName) {
+		this.serverName = serverName;
+	}
+
+	public String getIp() {
+		return ip;
+	}
+
+	public void setIp(String ip) {
+		this.ip = ip;
+	}
+
+	public int getPort() {
+		return port;
+	}
+
+	public void setPort(int port) {
+		this.port = port;
 	}
 
 	@Override
@@ -72,7 +106,9 @@ public class MessageSender implements Runnable {
 				Thread.sleep(10000);
 				serverConnected.set(connection.isOpen());
 				if (!connection.isOpen()) {
+					connection.close();
 					context.close();
+					serverDown.set(true);
 				}
 			} catch (InterruptedException | IOException e) {
 				// TODO Auto-generated catch block

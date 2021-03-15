@@ -1,7 +1,9 @@
 package io.slingr.endpoints.hl7;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -44,6 +46,8 @@ public class Hl7Endpoint extends Endpoint {
 	Map<String, HL7Service> servers = new HashMap<String, HL7Service>();
 	// Initiators allow to send messages
 	Map<String, Initiator> initiators = new HashMap<String, Initiator>();
+
+	List<MessageSender> messageSenders = new ArrayList<>();
 
 	private VpnConnectionThread vpnThread;
 	private ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -113,6 +117,7 @@ public class Hl7Endpoint extends Endpoint {
 					MessageSender sender = new MessageSender(name, ip, port, appLogger);
 					ExecutorService SenderServerExecutor = Executors.newSingleThreadExecutor();
 					SenderServerExecutor.execute(sender);
+					messageSenders.add(sender);
 					while (!sender.isConnected()) {
 						try {
 							Thread.sleep(3000);
@@ -127,6 +132,26 @@ public class Hl7Endpoint extends Endpoint {
 				}
 			}
 		}
+//		while (true) {
+//			for (MessageSender messageSender : messageSenders) {
+//				try {
+//					Thread.sleep(5000);
+//				} catch (InterruptedException e) {
+//					// TODO Auto-generated catch block
+//					e.printStackTrace();
+//				}
+//				if (messageSender.gotDisconnected()) {
+//					String name = messageSender.getServerName();
+//					String ip = messageSender.getIp();
+//					int port = messageSender.getPort();
+//					messageSender.interruptThread();
+//					MessageSender newSender = new MessageSender(name, ip, port, appLogger);
+//					ExecutorService SenderServerExecutor = Executors.newSingleThreadExecutor();
+//					SenderServerExecutor.execute(newSender);
+//					messageSenders.add(newSender);
+//				}
+//			}
+//		}
 	}
 
 	@Override
