@@ -55,9 +55,9 @@ public class MessageSender implements Runnable {
 		this.initiator = initiator;
 	}
 
-	public void interruptThread() {
-		Thread.currentThread().interrupt();
-	}
+//	public void interruptThread() {
+//		Thread.currentThread().interrupt();
+//	}
 
 	public String getServerName() {
 		return serverName;
@@ -107,10 +107,10 @@ public class MessageSender implements Runnable {
 				serverConnected.set(connection.isOpen());
 				if (!connection.isOpen()) {
 					connection.close();
-					context.close();
+//					context.close();
 					serverDown.set(true);
 				}
-			} catch (InterruptedException | IOException e) {
+			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
