@@ -45,7 +45,7 @@ public class Hl7Endpoint extends Endpoint {
 	// Servers listen for messages
 	Map<String, HL7Service> servers = new HashMap<String, HL7Service>();
 	// Initiators allow to send messages
-	Map<String, Initiator> initiators = new HashMap<String, Initiator>();
+	Map<String, MessageSender> initiators = new HashMap<String, MessageSender>();
 
 	List<MessageSender> messageSenders = new ArrayList<>();
 
@@ -127,7 +127,7 @@ public class Hl7Endpoint extends Endpoint {
 						}
 					}
 					if (sender.isConnected()) {
-						initiators.put(name, sender.getInitiator());
+						initiators.put(name, sender);
 					}
 				}
 			}
@@ -175,7 +175,7 @@ public class Hl7Endpoint extends Endpoint {
 			Message msg = parser.parse(params.string("message"));
 			appLogger.info("Channel: " + params.string("channel"));
 			appLogger.info("Sending message... ");
-			Initiator init = initiators.get(params.string("channel"));
+			Initiator init = initiators.get(params.string("channel")).getInitiator();
 			if (init != null) {
 				Message response = init.sendAndReceive(msg);
 				responseString = parser.encode(response);

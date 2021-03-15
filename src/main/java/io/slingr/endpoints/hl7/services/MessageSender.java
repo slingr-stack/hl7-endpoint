@@ -106,9 +106,9 @@ public class MessageSender implements Runnable {
 				Thread.sleep(10000);
 				serverConnected.set(connection.isOpen());
 				if (!connection.isOpen()) {
-//					connection.close();
+					connection.close();
 //					context.setSocketFactory(null);
-					context.close();
+//					context.close();
 					serverDown.set(true);
 				}
 			} catch (InterruptedException e) {
