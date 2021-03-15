@@ -120,7 +120,7 @@ public class Hl7Endpoint extends Endpoint {
 					messageSenders.add(sender);
 					while (!sender.isConnected()) {
 						try {
-							Thread.sleep(3000);
+							Thread.sleep(2000);
 							appLogger.info("Waiting for the " + name + " server to get connected...");
 						} catch (InterruptedException e) {
 							e.printStackTrace();
