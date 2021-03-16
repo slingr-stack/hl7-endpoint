@@ -3,7 +3,6 @@ package io.slingr.endpoints.hl7;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -46,6 +45,10 @@ public class Hl7Endpoint extends Endpoint {
 	Map<String, HL7Service> servers = new HashMap<String, HL7Service>();
 	// Initiators allow to send messages
 	Map<String, MessageSender> initiators = new HashMap<String, MessageSender>();
+
+	ArrayList<Channel> senderChannels = new ArrayList<>();
+
+	ArrayList<Channel> receiverChannels = new ArrayList<>();
 
 	private VpnConnectionThread vpnThread;
 	private ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -104,28 +107,39 @@ public class Hl7Endpoint extends Endpoint {
 			String ip = channel.string("ip");
 			int port = Integer.parseInt(channel.string("port"));
 
-			if (type.equals("receiver")) {
-				HL7Service server = context.newServer(port, false);
-				server.registerApplication("*", "*", handler); // Support all message types
-				server.start();
-				appLogger.info("Receiver channel [" + name + "] started in port [" + port + "]!");
-				servers.put(name, server);
+			Channel ch = new Channel(name, type, ip, port);
+
+			if (ch.getType().equals("receiver")) {
+				receiverChannels.add(ch);
 			} else {
-				if (vpnThread.isConnected()) {
-					MessageSender sender = new MessageSender(name, ip, port, appLogger);
-					ExecutorService SenderServerExecutor = Executors.newSingleThreadExecutor();
-					SenderServerExecutor.execute(sender);
-					while (!sender.isConnected()) {
-						try {
-							appLogger.info("Waiting for the " + name + " server to get connected...");							
-							Thread.sleep(2000);
-						} catch (InterruptedException e) {
-							e.printStackTrace();
-						}
+				senderChannels.add(ch);
+			}
+		}
+
+		for (Channel channel : receiverChannels) {
+			HL7Service server = context.newServer(channel.getPort(), false);
+			server.registerApplication("*", "*", handler); // Support all message types
+			server.start();
+			appLogger.info("Receiver channel [" + channel.getName() + "] started in port [" + channel.getPort() + "]!");
+			servers.put(channel.getName(), server);
+		}
+
+		for (Channel channel : senderChannels) {
+			if (vpnThread.isConnected()) {
+				MessageSender sender = new MessageSender(channel.getName(), channel.getIp(), channel.getPort(),
+						appLogger);
+				ExecutorService SenderServerExecutor = Executors.newSingleThreadExecutor();
+				SenderServerExecutor.execute(sender);
+				while (!sender.isConnected()) {
+					try {
+						appLogger.info("Waiting for the " + channel.getName() + " server to get connected...");
+						Thread.sleep(2000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
 					}
-					if (sender.isConnected()) {
-						initiators.put(name, sender);
-					}
+				}
+				if (sender.isConnected()) {
+					initiators.put(channel.getName(), sender);
 				}
 			}
 		}
