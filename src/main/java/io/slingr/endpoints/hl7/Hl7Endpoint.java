@@ -47,8 +47,6 @@ public class Hl7Endpoint extends Endpoint {
 	// Initiators allow to send messages
 	Map<String, MessageSender> initiators = new HashMap<String, MessageSender>();
 
-	List<MessageSender> messageSenders = new ArrayList<>();
-
 	private VpnConnectionThread vpnThread;
 	private ExecutorService executor = Executors.newSingleThreadExecutor();
 
@@ -117,11 +115,10 @@ public class Hl7Endpoint extends Endpoint {
 					MessageSender sender = new MessageSender(name, ip, port, appLogger);
 					ExecutorService SenderServerExecutor = Executors.newSingleThreadExecutor();
 					SenderServerExecutor.execute(sender);
-					messageSenders.add(sender);
 					while (!sender.isConnected()) {
 						try {
+							appLogger.info("Waiting for the " + name + " server to get connected...");							
 							Thread.sleep(2000);
-							appLogger.info("Waiting for the " + name + " server to get connected...");
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
@@ -132,26 +129,6 @@ public class Hl7Endpoint extends Endpoint {
 				}
 			}
 		}
-//		while (true) {
-//			for (MessageSender messageSender : messageSenders) {
-//				try {
-//					Thread.sleep(5000);
-//				} catch (InterruptedException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//				}
-//				if (messageSender.gotDisconnected()) {
-//					String name = messageSender.getServerName();
-//					String ip = messageSender.getIp();
-//					int port = messageSender.getPort();
-//					messageSender.interruptThread();
-//					MessageSender newSender = new MessageSender(name, ip, port, appLogger);
-//					ExecutorService SenderServerExecutor = Executors.newSingleThreadExecutor();
-//					SenderServerExecutor.execute(newSender);
-//					messageSenders.add(newSender);
-//				}
-//			}
-//		}
 	}
 
 	@Override
