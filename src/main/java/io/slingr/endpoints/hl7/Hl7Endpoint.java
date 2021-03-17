@@ -152,7 +152,7 @@ public class Hl7Endpoint extends Endpoint {
 	}
 
 	@EndpointFunction(name = "_sendHl7Message")
-	public String sendHl7Message(Json params) throws Exception {
+	public String sendHl7Message(Json params) {
 		Parser parser = context.getPipeParser();
 		String responseString = "";
 		try {
@@ -162,12 +162,12 @@ public class Hl7Endpoint extends Endpoint {
 				Message response = init.sendAndReceive(msg);
 				responseString = parser.encode(response);
 			} else {
-				throw new Exception("Sender channel [" + params.string("channel") + "] was not found or is not opened");
+				throw new IOException("Sender channel [" + params.string("channel") + "] was not found or is not opened");
 			}
-		} catch (HL7Exception | LLPException | IOException e) {
+		} catch (HL7Exception | LLPException | IOException  e) {
 			logger.info("inside the catch block");
 			events.send("messageError", Json.map().set("error", "error"));
-//			throw new Exception(e);
+//			throw new HL7Exception(e);
 		}
 		return responseString;
 	}
