@@ -105,7 +105,7 @@ public class Hl7Endpoint extends Endpoint {
 			}
 			appLogger.info("VPN is connected...");
 		}
-		ReceivingApplication handler = new Receiver(events()); // We trigger an event every time we receive a message
+		ReceivingApplication handler = new Receiver(events(), appLogger); // We trigger an event every time we receive a message
 		for (Json channel : configuration.jsons("channels")) {
 			String name = channel.string("name");
 			String type = channel.string("type");
