@@ -52,6 +52,8 @@ public class Hl7Endpoint extends Endpoint {
 
 	private VpnConnectionThread vpnThread;
 	private ExecutorService executor = Executors.newSingleThreadExecutor();
+	
+	private Events events;
 
 	@ApplicationLogger
 	protected AppLogs appLogger;
@@ -77,29 +79,32 @@ public class Hl7Endpoint extends Endpoint {
 	@Override
 	public void endpointStarted() {
 		appLogger.info("Initializing endpoint...");
-		if (!connectToVpn) {
-			endpointStopped("The VPN connection option is disabled. Please check the endpoint configuration.");
-		}
-		VpnService vpnService = new VpnService();
-		String ovpnFilePath = vpnService.createOvpnFile(ovpn);
-		String credentialsFilePath = vpnService.createLoginFile(vpnUsername, vpnPassword);
-		if (ovpnFilePath != null && credentialsFilePath != null) {
-			vpnThread = new VpnConnectionThread(ovpnFilePath, credentialsFilePath, appLogger);
-			executor.execute(vpnThread);
-		} else {
-			appLogger.error("There was a fatal error creating the VPN configurations file");
-			endpointStopped("There was a fatal error creating the VPN configurations file");
-		}
-		while (!vpnThread.isConnected()) {
-			try {
-				Thread.sleep(3000);
-				appLogger.info("Waiting for the VPN to get connected...");
-			} catch (InterruptedException e) {
-				appLogger.error("There was a fatal error connecting to the VPN");
-				e.printStackTrace();
+		if (connectToVpn) {
+			VpnService vpnService = new VpnService();
+			String ovpnFilePath = vpnService.createOvpnFile(ovpn);
+			String credentialsFilePath = vpnService.createLoginFile(vpnUsername, vpnPassword);
+			if (ovpnFilePath != null && credentialsFilePath != null) {
+				vpnThread = new VpnConnectionThread(ovpnFilePath, credentialsFilePath, appLogger);
+				executor.execute(vpnThread);
+			} else {
+				appLogger.error("There was a fatal error creating the VPN configurations file");
+				return;
 			}
+			int i = 0;
+			while (!vpnThread.isConnected()) {
+				try {
+					Thread.sleep(10000);
+					appLogger.info("Waiting for the VPN to get connected...");
+				} catch (InterruptedException e) {
+				}
+				if (i > 12) {
+					appLogger.error("After several attempts, it was not possible to connect to the VPN");
+					return;
+				}
+				i++;
+			}
+			appLogger.info("VPN is connected...");
 		}
-		appLogger.info("VPN is connected...");
 		ReceivingApplication handler = new Receiver(events()); // We trigger an event every time we receive a message
 		for (Json channel : configuration.jsons("channels")) {
 			String name = channel.string("name");
@@ -125,23 +130,12 @@ public class Hl7Endpoint extends Endpoint {
 		}
 
 		for (Channel channel : senderChannels) {
-			if (vpnThread.isConnected()) {
-				MessageSender sender = new MessageSender(channel.getName(), channel.getIp(), channel.getPort(),
-						appLogger);
-				ExecutorService SenderServerExecutor = Executors.newSingleThreadExecutor();
-				SenderServerExecutor.execute(sender);
-				while (!sender.isConnected()) {
-					try {
-						appLogger.info("Waiting for the " + channel.getName() + " server to get connected...");
-						Thread.sleep(2000);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-				}
-				if (sender.isConnected()) {
-					initiators.put(channel.getName(), sender);
-				}
-			}
+			MessageSender sender = new MessageSender(context, channel.getName(), channel.getIp(), channel.getPort(),
+					appLogger);
+
+			ExecutorService SenderServerExecutor = Executors.newSingleThreadExecutor();
+			SenderServerExecutor.execute(sender);
+			initiators.put(channel.getName(), sender);
 		}
 	}
 
@@ -162,27 +156,17 @@ public class Hl7Endpoint extends Endpoint {
 		Parser parser = context.getPipeParser();
 		String responseString = "";
 		try {
-			appLogger.info("Parsing message...");
 			Message msg = parser.parse(params.string("message"));
-			appLogger.info("Channel: " + params.string("channel"));
-			appLogger.info("Sending message... ");
 			Initiator init = initiators.get(params.string("channel")).getInitiator();
 			if (init != null) {
 				Message response = init.sendAndReceive(msg);
 				responseString = parser.encode(response);
-				appLogger.info("Message sent!");
 			} else {
-				throw new Exception("Server not found, please check the endpoint configuration");
+				throw new Exception("Sender channel [" + params.string("channel") + "] was not found or is not opened");
 			}
-		} catch (HL7Exception e) {
-			appLogger.error("HL7 exception: " + e.getMessage());
-			e.printStackTrace();
-		} catch (LLPException e) {
-			appLogger.error("LLP exception: " + e.getMessage());
-			e.printStackTrace();
-		} catch (IOException e) {
-			appLogger.error("IO exception: " + e.getMessage());
-			e.printStackTrace();
+		} catch (HL7Exception | LLPException | IOException e) {
+			events.send("messageError", Json.map().set("error", e));
+			throw new Exception(e);
 		}
 		return responseString;
 	}
@@ -190,9 +174,11 @@ public class Hl7Endpoint extends Endpoint {
 
 class Receiver implements ReceivingApplication {
 	private Events events;
+	private AppLogs appLogger;
 
-	public Receiver(Events events) {
+	public Receiver(Events events, AppLogs appLogger) {
 		this.events = events;
+		this.appLogger = appLogger;
 	}
 
 	public boolean canProcess(Message theIn) {
@@ -208,6 +194,7 @@ class Receiver implements ReceivingApplication {
 		try {
 			return message.generateACK(); // Generate an acknowledgment message and return it
 		} catch (IOException e) {
+			appLogger.error("There has been an error returning the acknowledgment", e);
 			throw new HL7Exception(e);
 		}
 	}

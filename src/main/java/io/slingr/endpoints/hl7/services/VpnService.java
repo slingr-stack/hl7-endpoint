@@ -28,11 +28,11 @@ public class VpnService {
 				writer.close();
 				logger.info(
 						"OVPN client file successfully created in the following path: " + tempFile.getAbsolutePath());
+				return tempFile.getAbsolutePath();
 			} catch (IOException e) {
-				logger.error("An error occurred while creating client.ovpn file.");
-				e.printStackTrace();
+				logger.error("An error occurred while creating client.ovpn file.", e);
+				return null;
 			}
-			return tempFile.getAbsolutePath();
 		} else {
 			logger.error("The ovpn file content cannot be empty.");
 			return null;
@@ -52,18 +52,16 @@ public class VpnService {
 				writer.close();
 				logger.info("OVPN credentials file successfully created in the following path: "
 						+ tempFile.getAbsolutePath());
+				return tempFile.getAbsolutePath();
 			} catch (IOException e) {
-				logger.error("An error occurred while creating credentials.ovpn file.");
-				e.printStackTrace();
+				logger.error("An error occurred while creating credentials.ovpn file.", e);
+				return null;
 			}
-			return tempFile.getAbsolutePath();
 		} else {
 			logger.error("Username and Password must be completed.");
 			return null;
 		}
 	}
-
-
 
 	public void killVpnConnection() {
 		List<String> commandParams = new ArrayList<>();
@@ -83,11 +81,9 @@ public class VpnService {
 				}
 			}
 		} catch (IOException e) {
-			logger.error("An error occurred while connecting to the VPN.");
-			e.printStackTrace();
+			logger.error("An error occurred while connecting to the VPN.", e);
 		}
 		logger.info("VPN connection result " + result.toString());
 	}
-
 
 }

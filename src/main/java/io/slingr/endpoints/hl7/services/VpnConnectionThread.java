@@ -34,7 +34,7 @@ public class VpnConnectionThread implements Runnable {
 
 	@Override
 	public void run() {
-		logger.info("THE VPN THREAD IS RUNNING");
+		logger.info("The VPN Thread is running");
 
 		List<String> vpnConnectioncommandParams = new ArrayList<>();
 
@@ -72,12 +72,9 @@ public class VpnConnectionThread implements Runnable {
 					connected.set(false);
 					Thread.sleep(5000);
 				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
 				}
 			} catch (IOException e) {
-				appLogger.error("An error occurred while connecting to the VPN: " + e.getMessage());
-				e.printStackTrace();
+				appLogger.error("An error occurred while connecting to the VPN", e);
 			}
 		}
 	}
@@ -115,9 +112,7 @@ public class VpnConnectionThread implements Runnable {
 			pbVpnScript3Connection.start();
 
 		} catch (IOException e) {
-			logger.error("An error occurred while executing linux commands: " + e.getMessage());
-			e.printStackTrace();
+			logger.error("An error occurred while executing linux commands.", e);
 		}
 	}
-
 }

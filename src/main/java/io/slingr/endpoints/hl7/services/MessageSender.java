@@ -17,15 +17,15 @@ public class MessageSender implements Runnable {
 	@SuppressWarnings("unused")
 	private static final Logger logger = LoggerFactory.getLogger(MessageSender.class);
 
-	// We use a HAPI context for pretty much everything
-	HapiContext context;
-
+	private HapiContext context;
 	private String serverName;
 	private String ip;
 	private int port;
 	private AppLogs appLogger;
 
-	public MessageSender(String serverName, String ip, int port, AppLogs appLogger) {
+	public MessageSender(HapiContext context, String serverName, String ip, int port, AppLogs appLogger) {
+		super();
+		this.context = context;
 		this.serverName = serverName;
 		this.ip = ip;
 		this.port = port;
@@ -59,20 +59,17 @@ public class MessageSender implements Runnable {
 							"Sender channel [" + serverName + "], IP: [" + ip + "] started in port [" + port + "]!");
 					serverConnected.set(true);
 				} catch (HL7Exception | InterruptedException e) {
-					appLogger.error("Could not start channel [" + serverName + "], IP: [" + ip + "]. Reason: "
-							+ e.getMessage());
+					appLogger.error("Could not start channel [" + serverName + "], IP: [" + ip + "].", e);
 				}
-
 			}
 			try {
 				Thread.sleep(10000);
 				serverConnected.set(connection.isOpen());
 				if (!connection.isOpen()) {
+					appLogger.warn("The connection with sender channel [" + serverName + "], IP: [" + ip + "] was lost. We will try to reconnect...");
 					connection.close();
 				}
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
 			}
 		}
 	}
