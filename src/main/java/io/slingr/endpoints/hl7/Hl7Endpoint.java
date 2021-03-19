@@ -162,7 +162,7 @@ public class Hl7Endpoint extends Endpoint {
 				throw new Exception("Sender channel [" + params.string("channel") + "] was not found or is not opened");
 			}
 		} catch (HL7Exception | LLPException | IOException e) {
-			throw new Exception(e.getMessage());
+			throw new Exception("Error sending message through channel [" + params.string("channel") + "]: "+e.getMessage(), e);
 		}
 		return responseString;
 	}
