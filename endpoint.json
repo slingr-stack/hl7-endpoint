@@ -25,11 +25,6 @@
 			"label": "Message Arrived",
 			"name": "messageArrived",
 			"description": "When a new HL7 arrived."
-		},
-		{
-			"label": "Message Error",
-			"name": "messageError",
-			"description": "When a message could not be sent"
 		}
 	],
 	"functions": [

@@ -50,7 +50,6 @@ public class MessageSender implements Runnable {
 		while (true) {
 			while (!isConnected()) {
 				try {
-					Thread.sleep(2000);
 					appLogger.info("Attempting to connect to sender channel [" + serverName + "], IP: [" + ip + "].");
 					context = new DefaultHapiContext();
 					connection = context.newClient(ip, port, false);
@@ -58,8 +57,12 @@ public class MessageSender implements Runnable {
 					appLogger.info(
 							"Sender channel [" + serverName + "], IP: [" + ip + "] started in port [" + port + "]!");
 					serverConnected.set(true);
-				} catch (HL7Exception | InterruptedException e) {
+				} catch (HL7Exception e) {
 					appLogger.error("Could not start channel [" + serverName + "], IP: [" + ip + "].", e);
+					try {
+						Thread.sleep(2000);
+					} catch (InterruptedException e2) {
+					}
 				}
 			}
 			try {

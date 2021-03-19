@@ -52,8 +52,6 @@ public class Hl7Endpoint extends Endpoint {
 
 	private VpnConnectionThread vpnThread;
 	private ExecutorService executor = Executors.newSingleThreadExecutor();
-	
-	private Events events;
 
 	@ApplicationLogger
 	protected AppLogs appLogger;
@@ -72,9 +70,6 @@ public class Hl7Endpoint extends Endpoint {
 
 	@EndpointConfiguration
 	private Json configuration;
-
-	public Hl7Endpoint() {
-	}
 
 	@Override
 	public void endpointStarted() {
@@ -97,7 +92,7 @@ public class Hl7Endpoint extends Endpoint {
 					appLogger.info("Waiting for the VPN to get connected...");
 				} catch (InterruptedException e) {
 				}
-				if (i > 12) {
+				if (i > 12) {//we try to connect for 2 minutes, after that we return.
 					appLogger.error("After several attempts, it was not possible to connect to the VPN");
 					return;
 				}
@@ -105,7 +100,8 @@ public class Hl7Endpoint extends Endpoint {
 			}
 			appLogger.info("VPN is connected...");
 		}
-		ReceivingApplication handler = new Receiver(events()); // We trigger an event every time we receive a message
+		ReceivingApplication handler = new Receiver(events(), appLogger); // We trigger an event every time we receive a
+																			// message
 		for (Json channel : configuration.jsons("channels")) {
 			String name = channel.string("name");
 			String type = channel.string("type");
@@ -153,9 +149,10 @@ public class Hl7Endpoint extends Endpoint {
 
 	@EndpointFunction(name = "_sendHl7Message")
 	public String sendHl7Message(Json params) throws Exception {
-		Parser parser = context.getPipeParser();
 		String responseString = "";
 		try {
+			Parser parser = context.getPipeParser();
+
 			Message msg = parser.parse(params.string("message"));
 			Initiator init = initiators.get(params.string("channel")).getInitiator();
 			if (init != null) {
@@ -165,8 +162,7 @@ public class Hl7Endpoint extends Endpoint {
 				throw new Exception("Sender channel [" + params.string("channel") + "] was not found or is not opened");
 			}
 		} catch (HL7Exception | LLPException | IOException e) {
-			events.send("messageError", Json.map().set("error", e));
-			throw new Exception(e);
+			throw new Exception("Error sending message through channel [" + params.string("channel") + "]: "+e.getMessage(), e);
 		}
 		return responseString;
 	}
