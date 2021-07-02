@@ -31,6 +31,10 @@
 		{
 			"label": "Send Message",
 			"name": "_sendHl7Message"
+		},
+		{
+			"label": "Send Message from JSON",
+			"name": "_sendHl7FromJSON"
 		}
 	],
 	"scripts": [

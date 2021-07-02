@@ -1,26 +1,21 @@
 package io.slingr.endpoints.hl7;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import ca.uhn.hl7v2.model.v281.segment.EVN;
-import ca.uhn.hl7v2.model.v281.segment.MSH;
-import ca.uhn.hl7v2.model.v281.segment.PID;
-import ca.uhn.hl7v2.model.v281.segment.PV1;
+import ca.uhn.hl7v2.*;
+import ca.uhn.hl7v2.model.AbstractMessage;
+import ca.uhn.hl7v2.model.v281.message.ADT_A02;
+import ca.uhn.hl7v2.model.v281.message.ADT_A03;
+import ca.uhn.hl7v2.model.v281.segment.*;
+
+import io.slingr.endpoints.exceptions.EndpointException;
+import io.slingr.endpoints.exceptions.ErrorCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.uhn.hl7v2.DefaultHapiContext;
-import ca.uhn.hl7v2.HL7Exception;
-import ca.uhn.hl7v2.HapiContext;
 import ca.uhn.hl7v2.app.HL7Service;
 import ca.uhn.hl7v2.app.Initiator;
 import ca.uhn.hl7v2.llp.LLPException;
@@ -42,6 +37,9 @@ import io.slingr.endpoints.hl7.services.VpnService;
 import io.slingr.endpoints.services.AppLogs;
 import io.slingr.endpoints.services.Events;
 import io.slingr.endpoints.utils.Json;
+
+import static io.slingr.endpoints.hl7.jsonHelper.JsonHelper.*;
+import static io.slingr.endpoints.hl7.populators.SegmentPopulator.*;
 
 @SlingrEndpoint(name = "hl7")
 public class Hl7Endpoint extends Endpoint {
@@ -81,6 +79,8 @@ public class Hl7Endpoint extends Endpoint {
 	@EndpointConfiguration
 	private Json configuration;
 
+	public static String appName;
+
 	@Override
 	public void endpointStarted() {
 		appLogger.info("Initializing endpoint...");
@@ -111,7 +111,7 @@ public class Hl7Endpoint extends Endpoint {
 			appLogger.info("VPN is connected...");
 		}
 		ReceivingApplication handler = new Receiver(events(), appLogger); // We trigger an event every time we receive a
-																			// message
+		// message
 		for (Json channel : configuration.jsons("channels")) {
 			String name = channel.string("name");
 			String type = channel.string("type");
@@ -143,6 +143,9 @@ public class Hl7Endpoint extends Endpoint {
 			SenderServerExecutor.execute(sender);
 			initiators.put(channel.getName(), sender);
 		}
+		appName = properties().getApplicationName();
+		//We validate the message constructed against our custom rules defined in the "hl7v281ValidationBuilder" class.
+		//context.setValidationRuleBuilder(new Hl7v281ValidationBuilder());
 	}
 
 	@Override
@@ -172,20 +175,32 @@ public class Hl7Endpoint extends Endpoint {
 				throw new Exception("Sender channel [" + params.string("channel") + "] was not found or is not opened");
 			}
 		} catch (HL7Exception | LLPException | IOException e) {
-			throw new Exception("Error sending message through channel [" + params.string("channel") + "]: "+e.getMessage(), e);
+			throw new Exception("Error sending message through channel [" + params.string("channel") + "]: " + e.getMessage(), e);
 		}
 		return responseString;
 	}
 
-	@EndpointFunction(name = "_sendHl7AsJSON")
-	public String sendHl7AsJSON(Json params) throws Exception {
+	@EndpointFunction(name = "_sendHl7FromJSON")
+	public String sendHl7FromJSON(Json params) throws Exception {
 		String responseString = "";
+		//We check that the message header exists, and that it has messageType and triggerEvent on in.
+		if(!params.contains("messageHeader")){
+			throw EndpointException.permanent(ErrorCode.ARGUMENT, "messageHeader property is required");
+		}
+		Json messageHeader = singleJsonPropertyParse("messageHeader",params.string("messageHeader"));
+		if (!messageHeader.contains("messageType")) {
+			throw EndpointException.permanent(ErrorCode.ARGUMENT, "messageHeader.messageType property is required");
+		} else if (!messageHeader.contains("triggerEvent")) {
+			throw EndpointException.permanent(ErrorCode.ARGUMENT, "messageHeader.triggerEvent property is required");
+		}
 
-		switch (params.string("messageType").toUpperCase()) {
+		String messageType = messageHeader.string("messageType");
+		String triggerEvent = messageHeader.string("triggerEvent");
+		switch (messageType.toUpperCase()) {
 			case "ACK":
 				break;
 			case "ADT":
-				responseString = buildADTmessage(params);
+				responseString = buildAdtMessage(triggerEvent,params);
 				break;
 			case "BAR":
 				break;
@@ -210,67 +225,46 @@ public class Hl7Endpoint extends Endpoint {
 			case "SIU":
 				break;
 			default:
-				responseString = "No messageType specified";
+				throw EndpointException.permanent(ErrorCode.ARGUMENT, "The value for 'messageType': [" + messageType + "] is not supported. The only supported values are: ACK,ADT,BAR,DFT,MDM,MFN,ORM,ORU,QRY,RAS,RDE,RGV & SIU");
 		}
 
 		return responseString;
 	}
 
-	private String buildADTmessage(Json params) throws HL7Exception, IOException {
-		String encodedMessage;
-		switch (params.string("triggerEvent").toUpperCase()) {
+	private String buildAdtMessage(String triggerEvent,Json params) throws HL7Exception, IOException {
+		String encodedMessage = "";
+		Parser parser = context.getPipeParser();
+
+		switch (triggerEvent.toUpperCase()) {
 			case "A01":
-				ADT_A01 adt = new ADT_A01();
-				adt.initQuickstart("ADT", "A01", "P");
+				ADT_A01 adt_a01 = new ADT_A01();
+				adt_a01.initQuickstart("ADT", "A01", "P");
+				//We set the required "Recorded Date/Time" Field here as it is required, independently of it having more info
+				adt_a01.getEVN().getRecordedDateTime().setValue(new Date());
+				populateMessage(adt_a01,params);
 
-				// Populate the MSH Segment
-				MSH mshSegment = adt.getMSH();
-				mshSegment.getSendingApplication().getNamespaceID().setValue("TestSendingSystem");
-				mshSegment.getSendingFacility().getNamespaceID().setValue("TestSendingFacility");
-				mshSegment.getReceivingApplication().getNamespaceID().setValue(params.string("receivingApplication").isEmpty() ? "TestReceivingSystem" : params.string("receivingApplication"));
-				mshSegment.getReceivingFacility().getNamespaceID().setValue(params.string("receivingApplication").isEmpty() ? "TestReceivingFacility" : params.string("receivingFacility"));
-				mshSegment.getSequenceNumber().setValue("123");
-
-				//Populate the EVN Segment
-				EVN evnSegment = adt.getEVN();
-				evnSegment.getRecordedDateTime().setValue(new Date());
-
-				// Populate the PID Segment
-				PID pid = adt.getPID();
-				//THIS SHOULD BE ITERATED, BECAUSE THE PATIENT MAY HAVE SEVERAL NAMES
-				//for (Json patientName : params.string("patientNames") {
-					pid.getPatientIdentifierList(0).getIDNumber().setValue(params.string("patientID"));
-					pid.getPatientName(0).getFamilyName().getSurname().setValue(params.string("patientLastName"));
-					pid.getPatientName(0).getGivenName().setValue(params.string("patientFirstName"));
-					pid.getPatientName(0).getSecondAndFurtherGivenNamesOrInitialsThereof().setValue(params.string("patientOtherNames"));
-					pid.getPatientName(0).getSuffixEgJRorIII().setValue(params.string("patientNameSuffix"));
-					pid.getPatientName(0).getPrefixEgDR().setValue(params.string("PatientNamePrefix"));
-					pid.getPatientName(0).getDegreeEgMD().setValue(params.string("PatientNameDegree"));
-					pid.getMotherSMaidenName(0).getFamilyName().getSurname().setValue(params.string("patientMothersMaidenLastName"));
-				//}
-					//Making conversion from String to LocalDateTime and from LocalDateTime to Date
-					pid.getDateTimeOfBirth().setValue(Date.from(LocalDateTime.parse(params.string("patientDateOfBirth")).atZone(ZoneId.systemDefault()).toInstant()));
-
-				// Populate the PV1 Segment
-				PV1 pv1 = adt.getPV1();
-				pv1.getPatientClass().getIdentifier().setValue(params.string("patientClass"));
-				pv1.getAssignedPatientLocation().getPointOfCare().getNamespaceID().setValue(params.string("pointOfCare"));
-				pv1.getAssignedPatientLocation().getRoom().getNamespaceID().setValue(params.string("room"));
-				pv1.getAssignedPatientLocation().getBed().getNamespaceID().setValue(params.string("bed"));
-				pv1.getAssignedPatientLocation().getFacility().getNamespaceID().setValue(params.string("facility"));
-				pv1.getAssignedPatientLocation().getBuilding().getNamespaceID().setValue(params.string("building"));
-				pv1.getAssignedPatientLocation().getFloor().getNamespaceID().setValue(params.string("floor"));
-				pv1.getAdmissionType().getIdentifier().setValue(params.string("admissionType"));
-				pv1.getPreadmitNumber().getIDNumber().setValue(params.string("preadmitNumber"));
-				pv1.getPreadmitNumber().getIdentifierTypeCode().setValue(params.string("preadmitNumberType"));
-
-				// Now, let's encode the message and look at the output
-				Parser parser = context.getPipeParser();
-				encodedMessage = parser.encode(adt);
+				// Now, let's encode the message
+				encodedMessage = encodeMessage(parser,adt_a01);
 				break;
+
+			case "A02":
+				ADT_A02 adt_a02 = new ADT_A02();
+				adt_a02.initQuickstart("ADT", "A02", "P");
+
+				// Now, let's encode the message
+				encodedMessage = encodeMessage(parser,adt_a02);
+				break;
+
+			case "A03":
+				ADT_A03 adt_a03 = new ADT_A03();
+				adt_a03.initQuickstart("ADT", "A03", "P");
+
+				// Now, let's encode the message
+				encodedMessage = encodeMessage(parser,adt_a03);
+				break;
+
 			default:
-				encodedMessage = "triggerEvent is empty";
-				break;
+				throw EndpointException.permanent(ErrorCode.ARGUMENT, "The value for triggerEvent: [" + triggerEvent + "] is not supported. The only supported values for an ADT messages are: A01 to A62");
 		}
 
 		System.out.println("Printing ER7 Encoded Message:");
@@ -278,6 +272,22 @@ public class Hl7Endpoint extends Endpoint {
 
 		return encodedMessage;
 	}
+
+	private void handleParseError(HL7Exception error) {
+		//We should see if we can handle errors here.
+		throw EndpointException.permanent(ErrorCode.ARGUMENT, error.getMessage());
+	}
+	private String encodeMessage(Parser parser, AbstractMessage msg) {
+		String encodedMessage = "";
+		try {
+			encodedMessage = parser.encode(msg);
+		} catch (HL7Exception err) {
+			//We handle the error here to centralize the messages from all kind of messages
+			handleParseError(err);
+		}
+		return encodedMessage;
+	}
+
 }
 
 class Receiver implements ReceivingApplication<Message> {
