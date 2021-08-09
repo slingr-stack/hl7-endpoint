@@ -9,6 +9,7 @@ import ca.uhn.hl7v2.*;
 import ca.uhn.hl7v2.model.AbstractMessage;
 import ca.uhn.hl7v2.model.v281.message.ADT_A02;
 import ca.uhn.hl7v2.model.v281.message.ADT_A03;
+import ca.uhn.hl7v2.model.v281.message.OML_O21;
 import ca.uhn.hl7v2.model.v281.segment.*;
 
 import io.slingr.endpoints.exceptions.EndpointException;
@@ -210,7 +211,11 @@ public class Hl7Endpoint extends Endpoint {
 				break;
 			case "MFN":
 				break;
+			case "OML":
+				responseString = buildOmlMessage(triggerEvent,params);
+				break;
 			case "ORM":
+				//responseString = buildOrmMessage(triggerEvent,params);
 				break;
 			case "ORU":
 				break;
@@ -264,12 +269,35 @@ public class Hl7Endpoint extends Endpoint {
 				break;
 
 			default:
-				throw EndpointException.permanent(ErrorCode.ARGUMENT, "The value for triggerEvent: [" + triggerEvent + "] is not supported. The only supported values for an ADT messages are: A01 to A62");
+				throw EndpointException.permanent(ErrorCode.ARGUMENT, "The value for triggerEvent: [" + triggerEvent + "] is not supported. The only supported values for an ADT message are: A01 to A62");
 		}
 
 		System.out.println("Printing ER7 Encoded Message:");
 		System.out.println(encodedMessage);
 
+		return encodedMessage;
+	}
+
+	private String buildOmlMessage(String triggerEvent,Json params) throws HL7Exception, IOException {
+		String encodedMessage = "";
+		Parser parser = context.getPipeParser();
+
+		switch (triggerEvent.toUpperCase()) {
+			case "O21":
+				OML_O21 oml_o21 = new OML_O21();
+				oml_o21.initQuickstart("OML","O21","P");
+				populateMessage(oml_o21,params);
+				encodedMessage = encodeMessage(parser,oml_o21);
+				break;
+			case "O33":
+				break;
+			case "O35":
+				break;
+			case "O39":
+				break;
+			default:
+				throw EndpointException.permanent(ErrorCode.ARGUMENT, "The value for triggerEvent: [" + triggerEvent + "] is not supported. The only supported values for an ORM messages are: O21,O33,O35 & O39");
+		}
 		return encodedMessage;
 	}
 

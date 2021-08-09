@@ -226,6 +226,7 @@ public class DataTypePopulator {
             String propValue = xpnValues.string(key);
 
             switch (key) {
+                case "mainValue":
                 case "familyName":
                     Json familyName = jsonOrValuePropertyParse(propPath,propValue);
                     populateFnField(xpn.getFamilyName(),familyName);
@@ -1461,6 +1462,28 @@ public class DataTypePopulator {
                     break;
                 default:
                     throw EndpointException.permanent(ErrorCode.ARGUMENT, "The property ['" + propPath + "'] does not correspond with any possible CQ field");
+            }
+        }
+    }
+
+    public static void populateEipField(EIP eip, Json eipValues) throws DataTypeException {
+        for (String key : eipValues.keys()) {
+            String propPath = parentProp + "." + key;
+            String propValue = eipValues.string(key);
+
+            switch (key) {
+                //Populate EIP.1 - Placer Assigned Identifier
+                case "placerAssignedIdentifier":
+                    Json placerAssignedIdentifier = jsonOrValuePropertyParse(propPath,propValue);
+                    populateEiField(eip.getPlacerAssignedIdentifier(),placerAssignedIdentifier);
+                    break;
+                //Populate EIP.2 - Filler Assigned Identifier
+                case "fillerAssignedIdentifier":
+                    Json fillerAssignedIdentifier = jsonOrValuePropertyParse(propPath, propValue);
+                    populateEiField(eip.getFillerAssignedIdentifier(),fillerAssignedIdentifier);
+                    break;
+                default:
+                    throw EndpointException.permanent(ErrorCode.ARGUMENT, "The property ['" + propPath + "'] does not correspond with any possible EIP field");
             }
         }
     }

@@ -4,6 +4,7 @@ import ca.uhn.hl7v2.HL7Exception;
 import ca.uhn.hl7v2.model.AbstractGroup;
 import ca.uhn.hl7v2.model.AbstractMessage;
 import ca.uhn.hl7v2.model.DataTypeException;
+import ca.uhn.hl7v2.model.v281.group.OML_O21_PATIENT;
 import ca.uhn.hl7v2.model.v281.segment.*;
 import io.slingr.endpoints.exceptions.EndpointException;
 import io.slingr.endpoints.exceptions.ErrorCode;
@@ -21,10 +22,6 @@ import static io.slingr.endpoints.hl7.populators.DataTypePopulator.*;
 public class SegmentPopulator {
 
     public static void populateMessage(AbstractMessage msg, Json params) throws HL7Exception {
-        //We set the required EVN.2 "Recorded Date/Time" Field here as it is required, independently of the EVN segment having more info
-        EVN evn = (EVN)msg.get("EVN");
-        evn.getRecordedDateTime().setValue(new Date());
-
         //The keys from the JSON
         Set<String> keys = params.keys();
 
@@ -60,8 +57,18 @@ public class SegmentPopulator {
                     populateUacSegment(uac,uacValues);
                     break;
 
+                case "notesAndComments":
+                    List<Json> notesAndCommentsList = arrayPropertyToJson(propPath, propValue);
+                    for (int i = 0; i < notesAndCommentsList.size(); i++) {
+                        NTE nte = (NTE) msg.get("NTE",i);
+                        Json notesAndComments = notesAndCommentsList.get(i);
+                        populateNteSegment(nte, notesAndComments);
+                    }
+                    break;
+
                 //Populate the EVN Segment with extra info if included
                 case "eventType":
+                    EVN evn = (EVN) msg.get("EVN");
                     Json evnValues = singleJsonPropertyParse(propPath, propValue);
                     populateEvnSegment(evn,evnValues);
                     break;
@@ -134,7 +141,7 @@ public class SegmentPopulator {
                     }
                     break;
 
-                // Populate the DG1 "Diagnosis" Segment, which is repeatable
+                // Populate the PROCEDURE group, which is repeatable
                 case "PROCEDURE":
                     //This List could be an array of PR1 or it could be and array of tuples(PR1,ROL)
                     List<Json> procedureList = multipleJsonPropertyParse(propPath, propValue);
@@ -175,70 +182,70 @@ public class SegmentPopulator {
                     }
                     break;
 
-                // Populate the "INSURANCE" Segment
+                // Populate the "INSURANCE" group, which is repeatable
                 case  "INSURANCE":
-                        //This List could be an array of IN1 or it could be and array of 6-tuples(IN1,IN2,IN3,ROL,AUT,RF1)
-                        List<Json> insuranceList = multipleJsonPropertyParse(propPath, propValue);
-                        for (int i = 0; i < insuranceList.size(); i++) {
-                            //As INSURANCE is a group, we have to do this in order to generalize it for every possible PROCEDURE group, which could be adt_a01,a03,etc.
-                            AbstractGroup insuranceGroup = (AbstractGroup) msg.get("INSURANCE",i);
-                            IN1 in1 = (IN1) insuranceGroup.get("IN1");
-                            Json insurance = insuranceList.get(i);
-                            //Here we know if it is the tuple or if it is just the IN1
-                            if(insurance.contains("insurance")){
-                                String propPath2 = propPath+".insurance";
-                                Json innerInsurance = singleJsonPropertyParse(propPath2, propValue);
-                                //Populate the PR1 "Procedures" Segment
-                                populateIn1Segment(in1,innerInsurance);
-                                if(insurance.contains("insuranceAdditionalInformation")){
-                                    propPath2 = propPath+".insuranceAdditionalInformation";
-                                    IN2 in2 = (IN2) insuranceGroup.get("IN2");
-                                    Json insuranceAdditionalInformation = singleJsonPropertyParse(propPath2, propValue);
-                                    populateIn2Segment(in2,insuranceAdditionalInformation);
-                                }
-                                if(insurance.contains("insuranceAdditionalInformationCertification")) {
-                                    propPath2 = propPath+".insuranceAdditionalInformationCertification";
-                                    List<Json> insuranceAdditionalInformationCertificationList = multipleJsonPropertyParse(propPath2, propValue);
-                                    for (Json insuranceAdditionalInformationCertification : insuranceAdditionalInformationCertificationList) {
-                                        IN3 in3 = (IN3) insuranceGroup.get("IN3");
-                                        populateIn3Segment(in3, insuranceAdditionalInformationCertification);
-                                    }
-                                }
-                                if(insurance.contains("role")){
-                                    propPath2 = propPath+".role";
-                                    List<Json> roleList = multipleJsonPropertyParse(propPath2, propValue);
-                                    for(int j = 0; j < roleList.size(); j++){
-                                        ROL _INSURANCE_rol = (ROL) insuranceGroup.get("ROL",j);
-                                        Json role = roleList.get(j);
-                                        //Populate the ROL "Role" Segment
-                                        populateRolSegment(_INSURANCE_rol,role);
-                                    }
-                                }
-                                if(insurance.contains("authorizationInformation")){
-                                    propPath2 = propPath+".authorizationInformation";
-                                    List<Json> authorizationInformationList = multipleJsonPropertyParse(propPath2, propValue);
-                                    for(int j = 0; j < authorizationInformationList.size(); j++){
-                                        AUT aut = (AUT) insuranceGroup.get("AUT",j);
-                                        Json authorizationInformation = authorizationInformationList.get(j);
-                                        //Populate the ROL "Role" Segment
-                                        populateAutSegment(aut,authorizationInformation);
-                                    }
-                                }
-                                if(insurance.contains("referralInformation")){
-                                    propPath2 = propPath+".referralInformation";
-                                    List<Json> referralInformationList = multipleJsonPropertyParse(propPath2, propValue);
-                                    for(int j = 0; j < referralInformationList.size(); j++){
-                                        RF1 rf1 = (RF1) insuranceGroup.get("RF1",j);
-                                        Json referralInformation = referralInformationList.get(j);
-                                        //Populate the ROL "Role" Segment
-                                        populateRf1Segment(rf1,referralInformation);
-                                    }
-                                }
-                            } else {
-                                //Populate the IN1 "Insurance" Segment
-                                populateIn1Segment(in1,insurance);
+                    //This List could be an array of IN1 or it could be and array of 6-tuples(IN1,IN2,IN3,ROL,AUT,RF1)
+                    List<Json> insuranceList = multipleJsonPropertyParse(propPath, propValue);
+                    for (int i = 0; i < insuranceList.size(); i++) {
+                        //As INSURANCE is a group, we have to do this in order to generalize it for every possible INSURANCE group, which could be adt_a01,a03,etc.
+                        AbstractGroup insuranceGroup = (AbstractGroup) msg.get("INSURANCE",i);
+                        IN1 in1 = (IN1) insuranceGroup.get("IN1");
+                        Json insurance = insuranceList.get(i);
+                        //Here we know if it is the tuple or if it is just the IN1
+                        if(insurance.contains("insurance")){
+                            String propPath2 = propPath+".insurance";
+                            Json innerInsurance = singleJsonPropertyParse(propPath2, propValue);
+                            //Populate the PR1 "Procedures" Segment
+                            populateIn1Segment(in1,innerInsurance);
+                            if(insurance.contains("insuranceAdditionalInformation")){
+                                propPath2 = propPath+".insuranceAdditionalInformation";
+                                IN2 in2 = (IN2) insuranceGroup.get("IN2");
+                                Json insuranceAdditionalInformation = singleJsonPropertyParse(propPath2, propValue);
+                                populateIn2Segment(in2,insuranceAdditionalInformation);
                             }
+                            if(insurance.contains("insuranceAdditionalInformationCertification")) {
+                                propPath2 = propPath+".insuranceAdditionalInformationCertification";
+                                List<Json> insuranceAdditionalInformationCertificationList = multipleJsonPropertyParse(propPath2, propValue);
+                                for (Json insuranceAdditionalInformationCertification : insuranceAdditionalInformationCertificationList) {
+                                    IN3 in3 = (IN3) insuranceGroup.get("IN3");
+                                    populateIn3Segment(in3, insuranceAdditionalInformationCertification);
+                                }
+                            }
+                            if(insurance.contains("role")){
+                                propPath2 = propPath+".role";
+                                List<Json> roleList = multipleJsonPropertyParse(propPath2, propValue);
+                                for(int j = 0; j < roleList.size(); j++){
+                                    ROL _INSURANCE_rol = (ROL) insuranceGroup.get("ROL",j);
+                                    Json role = roleList.get(j);
+                                    //Populate the ROL "Role" Segment
+                                    populateRolSegment(_INSURANCE_rol,role);
+                                }
+                            }
+                            if(insurance.contains("authorizationInformation")){
+                                propPath2 = propPath+".authorizationInformation";
+                                List<Json> authorizationInformationList = multipleJsonPropertyParse(propPath2, propValue);
+                                for(int j = 0; j < authorizationInformationList.size(); j++){
+                                    AUT aut = (AUT) insuranceGroup.get("AUT",j);
+                                    Json authorizationInformation = authorizationInformationList.get(j);
+                                    //Populate the ROL "Role" Segment
+                                    populateAutSegment(aut,authorizationInformation);
+                                }
+                            }
+                            if(insurance.contains("referralInformation")){
+                                propPath2 = propPath+".referralInformation";
+                                List<Json> referralInformationList = multipleJsonPropertyParse(propPath2, propValue);
+                                for(int j = 0; j < referralInformationList.size(); j++){
+                                    RF1 rf1 = (RF1) insuranceGroup.get("RF1",j);
+                                    Json referralInformation = referralInformationList.get(j);
+                                    //Populate the ROL "Role" Segment
+                                    populateRf1Segment(rf1,referralInformation);
+                                }
+                            }
+                        } else {
+                            //Populate the IN1 "Insurance" Segment
+                            populateIn1Segment(in1,insurance);
                         }
+                    }
                     break;
 
                 // Populate the OBX "Observation/result" Segment, which is repeatable
@@ -260,11 +267,246 @@ public class SegmentPopulator {
                     populatePdaSegment(pda, patientDeathAndAutopsy);
                     break;
 
+                // Populate the PATIENT group of OML_O21 messages
+                case "PATIENT":
+                    //As PATIENT is a group, we have to do this in order to generalize it for every possible PATIENT group, which could be OML_O21,O33,O35,etc.
+                    AbstractGroup patientGroup = (AbstractGroup) msg.get("PATIENT");
+                    PID patientGroupPid = (PID) patientGroup.get("PID");
+                    Json patientGroupValues = singleJsonPropertyParse(propPath,propValue);
+                    System.out.println("patientGroupValues: "+patientGroupValues.toString());
+                    Set<String> patientGroupKeys = patientGroupValues.keys();
+                    if (patientGroupKeys.contains("patientIdentification")){
+                        for (String patientGroupKey: patientGroupKeys) {
+                            String patientGroupPropPath = propPath + "." + patientGroupKey;
+                            String patientGroupPropValue = patientGroupValues.string(patientGroupKey);
+
+                            switch(patientGroupKey){
+                                case "patientIdentification":
+                                    Json patientGroupPatientIdentification = singleJsonPropertyParse(patientGroupPropPath,patientGroupPropValue);
+                                    populatePidSegment(patientGroupPid,patientGroupPatientIdentification);
+                                    break;
+                                case "patientAdditionalDemographic":
+                                    PD1 patientGroupPd1 = (PD1) patientGroup.get("PD1");
+                                    Json patientGroupPatientAdditionalDemographic = singleJsonPropertyParse(patientGroupPropPath,patientGroupPropValue);
+                                    populatePd1Segment(patientGroupPd1,patientGroupPatientAdditionalDemographic);
+                                    break;
+                                case "participationInformation":
+                                    List<Json> patientGroupParticipationInformationList = multipleJsonPropertyParse(patientGroupPropPath,patientGroupPropValue);
+                                    for (int i = 0; i < patientGroupParticipationInformationList.size(); i++) {
+                                        PRT patientGroupPrt = (PRT) patientGroup.get("PRT",i);
+                                        Json patientGroupParticipationInformation = patientGroupParticipationInformationList.get(i);
+                                        //populatePrtSegment(patientGroupPrt,patientGroupParticipationInformation); TO BE IMPLEMENT
+                                    }
+                                    break;
+                                case "notesAndComments":
+                                    List<Json> patientGroupNotesAndCommentsList = arrayPropertyToJson(patientGroupPropPath,patientGroupPropValue);
+                                    for (int i = 0; i < patientGroupNotesAndCommentsList.size(); i++) {
+                                        NTE patientGroupNte = (NTE) patientGroup.get("NTE",i);
+                                        Json patientGroupNotesAndComments = patientGroupNotesAndCommentsList.get(i);
+                                        populateNteSegment(patientGroupNte,patientGroupNotesAndComments);
+                                    }
+                                    break;
+                                case "nextOfKinAssociatedParties":
+                                    List<Json> patientGroupNextOfKinAssociatedPartiesList = multipleJsonPropertyParse(patientGroupPropPath,patientGroupPropValue);
+                                    for (int i = 0; i < patientGroupNextOfKinAssociatedPartiesList.size(); i++) {
+                                        NK1 patientGroupNk1 = (NK1) patientGroup.get("NK1",i);
+                                        Json patientGroupNextOfKinAssociatedParties = patientGroupNextOfKinAssociatedPartiesList.get(i);
+                                        populateNk1Segment(patientGroupNk1,patientGroupNextOfKinAssociatedParties);
+                                    }
+                                    break;
+                                case "accessRestriction":
+                                    ARV patientGroupArv = (ARV) patientGroup.get("ARV");
+                                    Json patientGroupAccessRestriction = singleJsonPropertyParse(patientGroupPropPath,patientGroupPropValue);
+                                    //populateArvSegment(patientGroupArv,patientGroupAccessRestriction); TO BE IMPLEMENTED
+                                    break;
+                                case "PATIENT_VISIT":
+                                    AbstractGroup patientVisitGroup = (AbstractGroup) patientGroup.get("PATIENT_VISIT");
+                                    PV1 patientVisitGroupPv1 = (PV1) patientVisitGroup.get("PV1");
+                                    Json patientVisitGroupValues = singleJsonPropertyParse(propPath,propValue);
+                                    Set<String> patientVisitGroupKeys = patientVisitGroupValues.keys();
+                                    if (patientVisitGroupKeys.contains("patientVisit")){
+                                        for (String patientVisitGroupKey: patientVisitGroupKeys) {
+                                            String patientVisitGroupPropPath = patientGroupPropPath + "." + patientVisitGroupKey;
+                                            String patientVisitGroupPropValue = patientVisitGroupValues.string(patientVisitGroupKey);
+
+                                            switch (patientGroupKey) {
+                                                case "patientVisit":
+                                                    Json patientVisitGroupPv1Values = singleJsonPropertyParse(patientVisitGroupPropPath,patientVisitGroupPropValue);
+                                                    populatePv1Segment(patientVisitGroupPv1,patientVisitGroupPv1Values);
+                                                    break;
+                                                case "patientVisitAdditionalInformation":
+                                                    PV2 patientVisitGroupPv2 = (PV2) patientVisitGroup.get("PV2");
+                                                    Json patientVisitGroupPv2Values = singleJsonPropertyParse(patientVisitGroupPropPath,patientVisitGroupPropValue);
+                                                    populatePv2Segment(patientVisitGroupPv2,patientVisitGroupPv2Values);
+                                                    break;
+                                                case "participationInformation":
+                                                    List<Json> patientVisitGroupPrtValuesList = multipleJsonPropertyParse(patientVisitGroupPropPath,patientVisitGroupPropValue);
+                                                    for (int i=0; i<patientVisitGroupPrtValuesList.size(); i++){
+                                                        PRT patientVisitGroupPrt = (PRT) patientVisitGroup.get("PRT",i);
+                                                        Json patientVisitGroupPrtValues = patientVisitGroupPrtValuesList.get(i);
+                                                        //populatePrtSegment()
+                                                    }
+                                                    break;
+                                                default:
+                                                    throw EndpointException.permanent(ErrorCode.ARGUMENT,"The property ['"+patientGroupKey+"'] does not correspond with any possible PATIENT_VISIT segment");
+                                            }
+                                        }
+                                    } else {
+                                        populatePv1Segment(patientVisitGroupPv1,patientVisitGroupValues);
+                                    }
+                                    break;
+                                case "INSURANCE":
+                                    AbstractGroup patientInsuranceGroup = (AbstractGroup) patientGroup.get("INSURANCE");
+                                    IN1 patientInsuranceGroupIn1 = (IN1) patientInsuranceGroup.get("IN1");
+                                    List<Json> patientInsuranceGroupList = multipleJsonPropertyParse(patientGroupPropPath,patientGroupPropValue);
+                                    for (int i=0 ; i < patientInsuranceGroupList.size() ; i++){
+                                        Json patientInsuranceGroupPropValue = patientInsuranceGroupList.get(i);
+                                        if(patientInsuranceGroupPropValue.contains("insurance")){
+                                            Set<String>patientInsuranceGroupPropKeys = patientInsuranceGroupPropValue.keys();
+                                            for (String patientInsuranceGroupPropKey: patientInsuranceGroupPropKeys) {
+                                                String patientInsuranceGroupPropPath = patientGroupPropPath + "." + patientInsuranceGroupPropKey;
+                                                String patientInsuranceGroupPropValueString = patientInsuranceGroupPropValue.string(patientInsuranceGroupPropKey);
+                                                switch (patientInsuranceGroupPropKey) {
+                                                    case "insurance":
+                                                        Json patientVisitGroupIn1Values = singleJsonPropertyParse(patientInsuranceGroupPropPath,patientInsuranceGroupPropValueString);
+                                                        populateIn1Segment(patientInsuranceGroupIn1,patientVisitGroupIn1Values);
+                                                        break;
+                                                    case "insuranceAdditionalInformation":
+                                                        IN2 patientInsuranceGroupIn2 = (IN2) patientInsuranceGroup.get("IN2");
+                                                        Json patientInsuranceGroupIn2Values = singleJsonPropertyParse(patientInsuranceGroupPropPath,patientInsuranceGroupPropValueString);
+                                                        populateIn2Segment(patientInsuranceGroupIn2,patientInsuranceGroupIn2Values);
+                                                        break;
+                                                    case "insuranceAdditionalInformationCertification":
+                                                        IN3 patientInsuranceGroupIn3 = (IN3) patientInsuranceGroup.get("IN3");
+                                                        Json patientInsuranceGroupIn3Values = singleJsonPropertyParse(patientInsuranceGroupPropPath,patientInsuranceGroupPropValueString);
+                                                        populateIn3Segment(patientInsuranceGroupIn3,patientInsuranceGroupIn3Values);
+                                                        break;
+                                                    default:
+                                                        throw EndpointException.permanent(ErrorCode.ARGUMENT,"The property ['"+patientInsuranceGroupPropKey+"'] does not correspond with any possible INSURANCE segment");
+                                                }
+                                            }
+                                        } else {
+                                            populateIn1Segment(patientInsuranceGroupIn1,patientInsuranceGroupPropValue);
+                                        }
+                                    }
+                                    break;
+                                case "guarantor":
+                                    GT1 gt1 = (GT1) patientGroup.get("GT1");
+                                    Json gt1Values = singleJsonPropertyParse(patientGroupPropPath,patientGroupPropValue);
+                                    populateGt1Segment(gt1,gt1Values);
+                                    break;
+                                case "patientAllergyInformation":
+                                    List<Json> patientGroupPatientAllergyInformationList = multipleJsonPropertyParse(patientGroupPropPath,patientGroupPropValue);
+                                    for (int i=0; i<patientGroupPatientAllergyInformationList.size(); i++){
+                                        GT1 patientGroupGt1 = (GT1) patientGroup.get("GT1",i);
+                                        Json patientGroupGt1Values = patientGroupPatientAllergyInformationList.get(i);
+                                        populateGt1Segment(patientGroupGt1,patientGroupGt1Values);
+                                    }
+                                    break;
+                                default:
+                                    throw EndpointException.permanent(ErrorCode.ARGUMENT,"The property ['"+key+"'] does not correspond with any possible HL7 segment");
+                            }
+                        }
+                    //If the keys dont have "patientIdentification" that means that the PATIENT json has the PID values directly
+                    } else {
+                        Json patientGroupPatientIdentification = singleJsonPropertyParse(propPath,propValue);
+                        populatePidSegment(patientGroupPid,patientGroupPatientIdentification);
+                    }
+                    break;
+                // Populate the PATIENT group of OML_O21 messages
+                case "ORDER":
+                    //This List could be an array of ORC or it could be and array of tuples(ORC,PRT)
+                    List<Json> orderList = multipleJsonPropertyParse(propPath, propValue);
+                    for (int i = 0; i < orderList.size(); i++) {
+                        AbstractGroup orderGroup = (AbstractGroup) msg.get("ORDER",i);
+                        ORC orc = (ORC) orderGroup.get("ORC");
+                        Json order = orderList.get(i);
+                        Set<String> orderKeys = order.keys();
+                        if (orderKeys.contains("commonOrder")){
+                            for (String orderKey: orderKeys) {
+                                String orderPropPath = propPath + "." + orderKey;
+                                String orderPropValue = order.string(orderKey);
+                                switch (orderKey) {
+                                    case "commonOrder":
+                                        Json commonOrder = singleJsonPropertyParse(orderPropPath,orderPropValue);
+                                        populateOrcSegment(orc,commonOrder);
+                                        break;
+                                    case "participationInformation":
+                                        PRT prt = (PRT) orderGroup.get("PRT");
+                                        List<Json> participationInformationList = multipleJsonPropertyParse(orderPropPath,orderPropValue);
+                                        for (int j = 0; j < participationInformationList.size(); j++) {
+                                            Json participationInformation = participationInformationList.get(j);
+                                            //populatePrtSegment(prt,participationInformation);
+                                        }
+                                        break;
+                                    case "TIMING":
+                                        String orderTimingPath = orderPropPath+".TIMING";
+                                        String orderTimingValues = order.string("TIMING");
+                                        AbstractGroup timingGroup = (AbstractGroup) orderGroup.get("TIMING");
+                                        List<Json> timingList = arrayPropertyToJson(orderTimingPath, orderTimingValues);
+                                        for (int j = 0; j < timingList.size(); j++) {
+                                            TQ1 orderTimingTq1 = (TQ1) timingGroup.get("TQ1");
+                                            Json timingValue = timingList.get(j);
+                                            Set<String> timingKeys = timingValue.keys();
+                                            if (timingKeys.contains("timingQuantity")){
+                                                for (String timingKey: timingKeys) {
+                                                    String timingPath = orderTimingPath + "." + timingKey;
+                                                    String timingValues = timingValue.string(timingKey);
+
+                                                    switch(timingKey){
+                                                        case "timingQuantity":
+                                                            Json timingQuantity = singleJsonPropertyParse(timingPath,timingValues);
+                                                            //populateTq1Segment(orderTimingTq1,timingQuantity);
+                                                            break;
+                                                        case "timingQuantityRelationship":
+                                                            List<Json> timingQuantityRelationshipList = multipleJsonPropertyParse(timingPath,timingValues);
+                                                            for (int k = 0; k < timingQuantityRelationshipList.size(); k++) {
+                                                                TQ2 orderTimingTq2 = (TQ2) timingGroup.get("TQ2",k);
+                                                                Json timingQuantityRelationship = timingQuantityRelationshipList.get(k);
+                                                                //populateTq2Segment(orderTimingTq2,timingQuantityRelationship);
+                                                            }
+                                                            break;
+                                                        default:
+                                                            throw EndpointException.permanent(ErrorCode.ARGUMENT,"The property ['"+key+"'] does not correspond with any possible TIMING segment");
+                                                    }
+                                                }
+                                            } else {
+                                                //populateTq1Segment(orderTimingTq1,timingValue);
+                                            }
+                                        }
+                                        break;
+                                    case "OBSERVATION_REQUEST":
+                                        break;
+                                    case "Financial Transaction":
+                                        break;
+                                    case "Clinical Trial Identification":
+                                        break;
+                                    case "Billing":
+                                        break;
+                                    default:
+                                        throw EndpointException.permanent(ErrorCode.ARGUMENT,"The property ['"+key+"'] does not correspond with any possible ORDER segment");
+                                }
+                            }
+                        } else {
+                            populateOrcSegment(orc,order);
+                        }
+                    }
+                    break;
                 default:
                     throw EndpointException.permanent(ErrorCode.ARGUMENT,"The property ['"+key+"'] does not correspond with any possible HL7 segment");
             }
         }
     }
+    /*
+    public static void  populateGroup(AbstractGroup group,String propPath, String repeatability, Json groupValues) throws DataTypeException {
+        String[] propPathSegments =propPath.split(".");
+        String groupName = propPathSegments[propPathSegments.length-1];
+        switch (groupName){
+            case "ORDER":
+
+        }
+    }
+    */
 
     public static void  populateMshSegment(MSH msh, Json mshValues) throws DataTypeException {
         //Populate MSH.3 "Sending Application" component
@@ -276,6 +518,10 @@ public class SegmentPopulator {
             String propValue = mshValues.string(key);
 
             switch (key){
+                case "messageType":
+                case "triggerEvent":
+                    continue;
+
                 case "sendingFacility":
                     Json sendingFacility = jsonOrValuePropertyParse(propPath, propValue);
                     populateHdField(msh.getSendingFacility(),sendingFacility);
@@ -301,8 +547,6 @@ public class SegmentPopulator {
     }
 
     public static void populateSftSegment(SFT sft, Json sftValues) throws DataTypeException {
-
-
         for (String key: sftValues.keys()) {
             String propPath = "softwareSegment.";
             String propValue = sftValues.string(key);
@@ -352,7 +596,49 @@ public class SegmentPopulator {
                     throw EndpointException.permanent(ErrorCode.ARGUMENT,"The property ['"+key+"'] does not correspond with any possible UAC field");
             }
         }
+    }
 
+    public static void  populateNteSegment(NTE nte, Json nteValues) throws DataTypeException {
+        for (String key: nteValues.keys()) {
+            String propPath = "notesAndComments." + key;
+            String propValue = nteValues.string(key);
+
+            switch (key) {
+                case "mainValue":
+                case "setId":
+                    nte.getSetIDNTE().setValue(propValue);
+                    break;
+                case "sourceOfComment":
+                    nte.getSourceOfComment().setValue(propValue);
+                    break;
+                case "comment":
+                    List<String> commentList = multipleValuesPropertyParse(propPath, propValue);
+                    for (int i = 0; i < commentList.size(); i++) {
+                        String operatorId = commentList.get(i);
+                        nte.getComment(i).setValue(operatorId);
+                    }
+                    break;
+                case "commentType":
+                    Json commentType = jsonOrValuePropertyParse(propPath, propValue);
+                    populateCweField(nte.getCommentType(), commentType);
+                    break;
+                case "enteredBy":
+                    Json enteredBy = jsonOrValuePropertyParse(propPath, propValue);
+                    populateXcnField(nte.getEnteredBy(),enteredBy);
+                    break;
+                case "enteredDateTime":
+                    nte.getEnteredDateTime().setValue(propValue);
+                    break;
+                case "effectiveStartDate":
+                    nte.getEffectiveStartDate().setValue(propValue);
+                    break;
+                case "expirationDate":
+                    nte.getExpirationDate().setValue(propValue);
+                    break;
+                default:
+                    throw EndpointException.permanent(ErrorCode.ARGUMENT,"The property ['"+key+"'] does not correspond with any possible ETN field");
+            }
+        }
     }
 
     public static void populateEvnSegment(EVN evn, Json evnValues) throws DataTypeException {
@@ -396,6 +682,7 @@ public class SegmentPopulator {
     }
 
     public static void populatePidSegment(PID pid, Json pidValues) throws DataTypeException {
+        System.out.println("Las keys son: "+pidValues.keys());
         for (String key: pidValues.keys()) {
             String propPath = "patientIdentification."+key;
             String propValue = pidValues.string(key);
@@ -3876,6 +4163,210 @@ public class SegmentPopulator {
                     break;
                 default:
                     throw EndpointException.permanent(ErrorCode.ARGUMENT, "The property ['" + key + "'] does not correspond with any possible PDA field");
+            }
+        }
+    }
+
+    public static void populateOrcSegment(ORC orc, Json orcValues) throws DataTypeException {
+        for (String key : orcValues.keys()) {
+            String propPath = "commonOrder." + key;
+            String propValue = orcValues.string(key);
+
+            switch (key) {
+                //Populate ORC.1 - Order Control
+                case "orderControl":
+                    orc.getOrderControl().setValue(propValue);
+                    break;
+                //Populate ORC.2 - Placer Order Number
+                case "placerOrderNumber":
+                    Json placerOrderNumber = jsonOrValuePropertyParse(propPath, propValue);;
+                    populateEiField(orc.getPlacerOrderNumber(),placerOrderNumber);
+                    break;
+                //Populate ORC.3 - Filler Order Number
+                case "fillerOrderNumber":
+                    Json fillerOrderNumber = jsonOrValuePropertyParse(propPath, propValue);;
+                    populateEiField(orc.getFillerOrderNumber(),fillerOrderNumber);
+                    break;
+                //Populate ORC.4 - Placer Group Number
+                case "placerGroupNumber":
+                    Json placerGroupNumber = jsonOrValuePropertyParse(propPath, propValue);;
+                    populateEipField(orc.getPlacerGroupNumber(),placerGroupNumber);
+                    break;
+                //Populate ORC.5 - Order Status
+                case "orderStatus":
+                    orc.getOrderStatus().setValue(propValue);
+                    break;
+                //Populate ORC.6 - Response Flag
+                case "responseFlag":
+                    orc.getResponseFlag().setValue(propValue);
+                    break;
+                //Populate ORC.7 - Quantity/Timing Withdrawn
+                //Populate ORC.8 - Parent
+                case "parent":
+                    Json parent = jsonOrValuePropertyParse(propPath, propValue);;
+                    populateEipField(orc.getParentOrder(),parent);
+                    break;
+                //Populate ORC.9 - Date/Time Of Transaction
+                case "dateTimeOfTransaction":
+                    orc.getDateTimeOfTransaction().setValue(propValue);
+                    break;
+                //Populate ORC.10 - Entered By
+                case "enteredBy":
+                    List<Json> enteredByList = multipleJsonPropertyParse(propPath,propValue);
+                    for (int i = 0; i < enteredByList.size(); i++) {
+                        Json enteredBy = enteredByList.get(i);
+                        populateXcnField(orc.getEnteredBy(i), enteredBy);
+                    }
+                    break;
+                //Populate ORC.11 - Verified By
+                case "verifiedBy":
+                    List<Json> verifiedByList = multipleJsonPropertyParse(propPath,propValue);
+                    for (int i = 0; i < verifiedByList.size(); i++) {
+                        Json verifiedBy = verifiedByList.get(i);
+                        populateXcnField(orc.getVerifiedBy(i), verifiedBy);
+                    }
+                    break;
+                //Populate ORC.12 - Ordering Provider
+                case "orderingProvider":
+                    List<Json> orderingProviderList = multipleJsonPropertyParse(propPath,propValue);
+                    for (int i = 0; i < orderingProviderList.size(); i++) {
+                        Json orderingProvider = orderingProviderList.get(i);
+                        populateXcnField(orc.getOrderingProvider(i), orderingProvider);
+                    }
+                    break;
+                //Populate ORC.13 - Enterer's Location
+                case "enterersLocation":
+                    Json enterersLocation = jsonOrValuePropertyParse(propPath, propValue);;
+                    populatePlField(orc.getEntererSLocation(),enterersLocation);
+                    break;
+                //Populate ORC.14 - Call Back Phone Number
+                case "callBackPhoneNumber":
+                    List<Json> callBackPhoneNumberList = multipleJsonPropertyParse(propPath,propValue);
+                    for (int i = 0; i < callBackPhoneNumberList.size(); i++) {
+                        Json callBackPhoneNumber = callBackPhoneNumberList.get(i);
+                        populateXtnField(orc.getCallBackPhoneNumber(i), callBackPhoneNumber);
+                    }
+                    break;
+                //Populate ORC.15 - Order Effective Date/Time
+                case "orderEffectiveDateTime":
+                    orc.getOrderEffectiveDateTime().setValue(propValue);
+                    break;
+                //Populate ORC.16 - Order Control Code Reason
+                case "orderControlCodeReason":
+                    Json orderControlCodeReason = jsonOrValuePropertyParse(propPath, propValue);;
+                    populateCweField(orc.getOrderControlCodeReason(),orderControlCodeReason);
+                    break;
+                //Populate ORC.17 - Entering Organization
+                case "enteringOrganization":
+                    Json enteringOrganization = jsonOrValuePropertyParse(propPath, propValue);;
+                    populateCweField(orc.getEnteringOrganization(),enteringOrganization);
+                    break;
+                //Populate ORC.18 - Entering Device
+                case "enteringDevice":
+                    Json enteringDevice = jsonOrValuePropertyParse(propPath, propValue);;
+                    populateCweField(orc.getEnteringDevice(),enteringDevice);
+                    break;
+                //Populate ORC.19 - Action By
+                case "actionBy":
+                    List<Json> actionByList = multipleJsonPropertyParse(propPath,propValue);
+                    for (int i = 0; i < actionByList.size(); i++) {
+                        Json actionBy = actionByList.get(i);
+                        populateXcnField(orc.getActionBy(i), actionBy);
+                    }
+                    break;
+                //Populate ORC.20 - Advanced Beneficiary Notice Code
+                case "advancedBeneficiaryNoticeCode":
+                    Json advancedBeneficiaryNoticeCode = jsonOrValuePropertyParse(propPath, propValue);;
+                    populateCweField(orc.getAdvancedBeneficiaryNoticeCode(),advancedBeneficiaryNoticeCode);
+                    break;
+                //Populate ORC.21 - Ordering Facility Name
+                case "orderingFacilityName":
+                    List<Json> orderingFacilityNameList = multipleJsonPropertyParse(propPath,propValue);
+                    for (int i = 0; i < orderingFacilityNameList.size(); i++) {
+                        Json orderingFacilityName = orderingFacilityNameList.get(i);
+                        populateXonField(orc.getOrderingFacilityName(i), orderingFacilityName);
+                    }
+                    break;
+                //Populate ORC.22 - Ordering Facility Address
+                case "orderingFacilityAddress":
+                    List<Json> orderingFacilityAddressList = multipleJsonPropertyParse(propPath,propValue);
+                    for (int i = 0; i < orderingFacilityAddressList.size(); i++) {
+                        Json orderingFacilityAddress = orderingFacilityAddressList.get(i);
+                        populateXadField(orc.getOrderingFacilityAddress(i), orderingFacilityAddress);
+                    }
+                    break;
+                //Populate ORC.23 - Ordering Facility Phone Number
+                case "orderingFacilityPhoneNumber":
+                    List<Json> orderingFacilityPhoneNumberList = multipleJsonPropertyParse(propPath,propValue);
+                    for (int i = 0; i < orderingFacilityPhoneNumberList.size(); i++) {
+                        Json orderingFacilityPhoneNumber = orderingFacilityPhoneNumberList.get(i);
+                        populateXtnField(orc.getOrderingFacilityPhoneNumber(i), orderingFacilityPhoneNumber);
+                    }
+                    break;
+                //Populate ORC.24 - Ordering Provider Address
+                case "orderingProviderAddress":
+                    List<Json> orderingProviderAddressList = multipleJsonPropertyParse(propPath,propValue);
+                    for (int i = 0; i < orderingProviderAddressList.size(); i++) {
+                        Json orderingProviderAddress = orderingProviderAddressList.get(i);
+                        populateXadField(orc.getOrderingProviderAddress(i), orderingProviderAddress);
+                    }
+                    break;
+                //Populate ORC.25 - Order Status Modifier
+                case "orderStatusModifier":
+                    Json orderStatusModifier = jsonOrValuePropertyParse(propPath, propValue);;
+                    populateCweField(orc.getOrderStatusModifier(),orderStatusModifier);
+                    break;
+                //Populate ORC.26 - Advanced Beneficiary Notice Override Reason
+                case "advancedBeneficiaryNoticeOverrideReason":
+                    Json advancedBeneficiaryNoticeOverrideReason = jsonOrValuePropertyParse(propPath, propValue);;
+                    populateCweField(orc.getAdvancedBeneficiaryNoticeOverrideReason(),advancedBeneficiaryNoticeOverrideReason);
+                    break;
+                //Populate ORC.27 - Filler's Expected Availability Date/Time
+                case "fillersExpectedAvailabilityDate/time":
+                    orc.getFillerSExpectedAvailabilityDateTime().setValue(propValue);
+                    break;
+                //Populate ORC.28 - Confidentiality Code
+                case "confidentialityCode":
+                    Json confidentialityCode = jsonOrValuePropertyParse(propPath, propValue);;
+                    populateCweField(orc.getConfidentialityCode(),confidentialityCode);
+                    break;
+                //Populate ORC.29 - Order Type
+                case "orderType":
+                    Json orderType = jsonOrValuePropertyParse(propPath, propValue);;
+                    populateCweField(orc.getOrderType(),orderType);
+                    break;
+                //Populate ORC.30 - Enterer Authorization Mode
+                case "entererAuthorizationMode":
+                    Json entererAuthorizationMode = jsonOrValuePropertyParse(propPath, propValue);;
+                    populateCneField(orc.getEntererAuthorizationMode(),entererAuthorizationMode);
+                    break;
+                //Populate ORC.31 - Parent Universal Service Identifier
+                case "parentUniversalServiceIdentifier":
+                    Json parentUniversalServiceIdentifier = jsonOrValuePropertyParse(propPath, propValue);;
+                    populateCweField(orc.getParentUniversalServiceIdentifier(),parentUniversalServiceIdentifier);
+                    break;
+                //Populate ORC.32 - Advanced Beneficiary Notice Date
+                case "advancedBeneficiaryNoticeDate":
+                    orc.getAdvancedBeneficiaryNoticeDate().setValue(propValue);
+                    break;
+                //Populate ORC.33 - Alternate Placer Order Number
+                case "alternatePlacerOrderNumber":
+                    List<Json> alternatePlacerOrderNumberList = multipleJsonPropertyParse(propPath, propValue);
+                    for (int i = 0; i < alternatePlacerOrderNumberList.size(); i++) {
+                        Json alternatePlacerOrderNumber = alternatePlacerOrderNumberList.get(i);
+                        populateCxField(orc.getAlternatePlacerOrderNumber(i),alternatePlacerOrderNumber);
+                    }
+                    break;
+                //Populate ORC.34 - Order Workflow Profile
+                case "orderWorkflowProfile":
+                    List<Json> orderWorkflowProfileList = arrayPropertyToJson(propPath, propValue);
+                    for (int i = 0; i < orderWorkflowProfileList.size(); i++) {
+                        Json orderWorkflowProfile = orderWorkflowProfileList.get(i);
+                        populateCweField(orc.getOrderWorkflowProfile(i),orderWorkflowProfile);
+                    }
+                    break;
+                default:
+                    throw EndpointException.permanent(ErrorCode.ARGUMENT, "The property ['" + key + "'] does not correspond with any possible ORC field");
             }
         }
     }

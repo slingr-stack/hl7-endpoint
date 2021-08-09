@@ -86,6 +86,7 @@ public class JsonHelper {
             switch (propValue.trim().charAt(0)){
                 case '{':
                     finalJson = Json.parse(propValue);
+                    if (finalJson.isList()) throw new RuntimeException();
                     break;
                 default:
                     finalJson = Json.parse("{\"mainValue\":\""+propValue+"\"}");
@@ -97,11 +98,13 @@ public class JsonHelper {
     }
 
     public static Json singleJsonPropertyParse(String propPath,String propValue){
+        System.out.println("Entra acá con propPath: "+propPath+" y propValue:"+propValue);
         Json finalJson = null;
         try {
             finalJson = Json.parse(propValue);
+            if (finalJson.isList()) throw new RuntimeException();
         } catch (RuntimeException rError){
-            throw EndpointException.permanent(ErrorCode.ARGUMENT,"The property ['"+propPath+"'] should be a JSON");
+            throw EndpointException.permanent(ErrorCode.ARGUMENT,"The property ['"+propPath+"'] should be a single JSON");
         }
         return finalJson;
     }
