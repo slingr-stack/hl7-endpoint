@@ -14,6 +14,12 @@ import ca.uhn.hl7v2.model.v281.segment.*;
 
 import io.slingr.endpoints.exceptions.EndpointException;
 import io.slingr.endpoints.exceptions.ErrorCode;
+import io.slingr.endpoints.framework.annotations.*;
+import io.slingr.endpoints.services.exchange.Parameter;
+import io.slingr.endpoints.services.rest.RestMethod;
+import io.slingr.endpoints.ws.exchange.WebServiceRequest;
+import io.slingr.endpoints.ws.exchange.WebServiceResponse;
+import org.apache.http.entity.ContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,11 +33,6 @@ import ca.uhn.hl7v2.protocol.ReceivingApplicationException;
 import ca.uhn.hl7v2.model.v281.message.ADT_A01;
 
 import io.slingr.endpoints.Endpoint;
-import io.slingr.endpoints.framework.annotations.ApplicationLogger;
-import io.slingr.endpoints.framework.annotations.EndpointConfiguration;
-import io.slingr.endpoints.framework.annotations.EndpointFunction;
-import io.slingr.endpoints.framework.annotations.EndpointProperty;
-import io.slingr.endpoints.framework.annotations.SlingrEndpoint;
 import io.slingr.endpoints.hl7.services.MessageSender;
 import io.slingr.endpoints.hl7.services.VpnConnectionThread;
 import io.slingr.endpoints.hl7.services.VpnService;
@@ -84,6 +85,7 @@ public class Hl7Endpoint extends Endpoint {
 
 	@Override
 	public void endpointStarted() {
+
 		appLogger.info("Initializing endpoint...");
 		if (connectToVpn) {
 			VpnService vpnService = new VpnService();
@@ -166,7 +168,6 @@ public class Hl7Endpoint extends Endpoint {
 		String responseString = "";
 		try {
 			Parser parser = context.getPipeParser();
-
 			Message msg = parser.parse(params.string("message"));
 			Initiator init = initiators.get(params.string("channel")).getInitiator();
 			if (init != null) {
@@ -301,6 +302,20 @@ public class Hl7Endpoint extends Endpoint {
 		return encodedMessage;
 	}
 
+	public void processHl7Message (String msg) throws HL7Exception {
+		Parser parser = context.getPipeParser();
+		Message decodedMessage = parser.parse(msg);
+		MSH msh = (MSH) decodedMessage.get("MSH");
+		String messageType = msh.getMessageType().getMessageCode().getValue();
+		String triggerEvent = msh.getMessageType().getTriggerEvent().getValue();
+		switch (messageType){
+			case "ADT":
+				return;
+			case "OML":
+				return;
+		}
+	}
+
 	private void handleParseError(HL7Exception error) {
 		//We should see if we can handle errors here.
 		throw EndpointException.permanent(ErrorCode.ARGUMENT, error.getMessage());
@@ -314,6 +329,20 @@ public class Hl7Endpoint extends Endpoint {
 			handleParseError(err);
 		}
 		return encodedMessage;
+	}
+
+	//WEBHOOKS
+	@EndpointWebService(path = "receiveHl7",methods = {RestMethod.POST})
+	private WebServiceResponse receiveHl7MessageHttp(WebServiceRequest request) {
+		Json responseBody = Json.map();
+		responseBody.set("Example","Something");
+		WebServiceResponse response = new WebServiceResponse(responseBody);
+		response.setHttpCode(202);
+		response.setHeader(Parameter.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType());
+		response.setHeader("value", "someHeader");
+		System.out.println("Request es:"+request.toString());
+		System.out.println("Response es:"+response.toString());
+		return response;
 	}
 
 }
@@ -334,10 +363,11 @@ class Receiver implements ReceivingApplication<Message> {
 	public Message processMessage(Message message, Map<String, Object> metadata)
 			throws ReceivingApplicationException, HL7Exception {
 		@SuppressWarnings("resource")
-		String encodedMessage = new DefaultHapiContext().getPipeParser().encode(message);
-		Json data = Json.map().set("message", encodedMessage);
-		events.send("messageArrived", Json.map().set("data", data)); // Notify event
+		String stringMessage = new DefaultHapiContext().getPipeParser().encode(message);
+		Json data = Json.map().set("message", stringMessage);
 		try {
+			MessageProcessor msgProcessor = new MessageProcessor(events);
+			msgProcessor.processOmlMessage(message,((MSH)message.get("MSH")).getMessageType().getTriggerEvent().getValue());
 			return message.generateACK(); // Generate an acknowledgment message and return it
 		} catch (IOException e) {
 			appLogger.error("There has been an error returning the acknowledgment", e);

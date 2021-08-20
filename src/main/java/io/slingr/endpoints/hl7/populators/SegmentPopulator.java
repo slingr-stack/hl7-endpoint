@@ -4,15 +4,12 @@ import ca.uhn.hl7v2.HL7Exception;
 import ca.uhn.hl7v2.model.AbstractGroup;
 import ca.uhn.hl7v2.model.AbstractMessage;
 import ca.uhn.hl7v2.model.DataTypeException;
-import ca.uhn.hl7v2.model.v281.group.OML_O21_PATIENT;
 import ca.uhn.hl7v2.model.v281.segment.*;
 import io.slingr.endpoints.exceptions.EndpointException;
 import io.slingr.endpoints.exceptions.ErrorCode;
 import io.slingr.endpoints.hl7.Hl7Endpoint;
 import io.slingr.endpoints.utils.Json;
 
-import javax.swing.*;
-import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
@@ -413,44 +410,47 @@ public class SegmentPopulator {
                         populatePidSegment(patientGroupPid,patientGroupPatientIdentification);
                     }
                     break;
-                // Populate the PATIENT group of OML_O21 messages
+                // Populate the ORDER group of OML_O21 messages
                 case "ORDER":
                     //This List could be an array of ORC or it could be and array of tuples(ORC,PRT)
-                    List<Json> orderList = multipleJsonPropertyParse(propPath, propValue);
-                    for (int i = 0; i < orderList.size(); i++) {
+                    List<Json> orderGroupList = multipleJsonPropertyParse(propPath, propValue);
+                    for (int i = 0; i < orderGroupList.size(); i++) {
                         AbstractGroup orderGroup = (AbstractGroup) msg.get("ORDER",i);
                         ORC orc = (ORC) orderGroup.get("ORC");
-                        Json order = orderList.get(i);
+                        Json order = orderGroupList.get(i);
                         Set<String> orderKeys = order.keys();
-                        if (orderKeys.contains("commonOrder")){
+                        if (!orderKeys.contains("commonOrder")) {
+                            populateOrcSegment(orc,order);
+                        } else {
                             for (String orderKey: orderKeys) {
-                                String orderPropPath = propPath + "." + orderKey;
-                                String orderPropValue = order.string(orderKey);
+                                String orderGroupPropPath = propPath + "." + orderKey;
+                                String orderGroupPropValue = order.string(orderKey);
                                 switch (orderKey) {
                                     case "commonOrder":
-                                        Json commonOrder = singleJsonPropertyParse(orderPropPath,orderPropValue);
+                                        Json commonOrder = singleJsonPropertyParse(orderGroupPropPath,orderGroupPropValue);
                                         populateOrcSegment(orc,commonOrder);
                                         break;
                                     case "participationInformation":
                                         PRT prt = (PRT) orderGroup.get("PRT");
-                                        List<Json> participationInformationList = multipleJsonPropertyParse(orderPropPath,orderPropValue);
+                                        List<Json> participationInformationList = multipleJsonPropertyParse(orderGroupPropPath,orderGroupPropValue);
                                         for (int j = 0; j < participationInformationList.size(); j++) {
                                             Json participationInformation = participationInformationList.get(j);
                                             //populatePrtSegment(prt,participationInformation);
                                         }
                                         break;
                                     case "TIMING":
-                                        String orderTimingPath = orderPropPath+".TIMING";
-                                        String orderTimingValues = order.string("TIMING");
+                                        String timingGroupPath = orderGroupPropPath+".TIMING";
+                                        String timingGroupValues = order.string("TIMING");
+
                                         AbstractGroup timingGroup = (AbstractGroup) orderGroup.get("TIMING");
-                                        List<Json> timingList = arrayPropertyToJson(orderTimingPath, orderTimingValues);
+                                        List<Json> timingList = arrayPropertyToJson(timingGroupPath, timingGroupValues);
                                         for (int j = 0; j < timingList.size(); j++) {
-                                            TQ1 orderTimingTq1 = (TQ1) timingGroup.get("TQ1");
+                                            TQ1 timingTq1 = (TQ1) timingGroup.get("TQ1");
                                             Json timingValue = timingList.get(j);
                                             Set<String> timingKeys = timingValue.keys();
                                             if (timingKeys.contains("timingQuantity")){
                                                 for (String timingKey: timingKeys) {
-                                                    String timingPath = orderTimingPath + "." + timingKey;
+                                                    String timingPath = timingGroupPath + "." + timingKey;
                                                     String timingValues = timingValue.string(timingKey);
 
                                                     switch(timingKey){
@@ -476,6 +476,123 @@ public class SegmentPopulator {
                                         }
                                         break;
                                     case "OBSERVATION_REQUEST":
+                                        String orderObservationRequestPath = orderGroupPropPath+".OBSERVATION_REQUEST";
+                                        String orderObservationRequestValues = order.string("OBSERVATION_REQUEST");
+
+                                        System.out.println("ENTRA EN CASE DE OBSERVATION REQUEST CON:");
+                                        System.out.println("orderObservationRequestPath: "+orderObservationRequestPath);
+                                        System.out.println("orderObservationRequestValues: "+orderObservationRequestValues);
+
+                                        AbstractGroup observationRequestGroup = (AbstractGroup) orderGroup.get("OBSERVATION_REQUEST");
+                                        Json orderObservationRequest = singleJsonPropertyParse(orderObservationRequestPath,orderObservationRequestValues);
+                                        OBR obr = (OBR) observationRequestGroup.get("OBR");
+                                        Set<String> orderObservationRequestKeys = orderObservationRequest.keys();
+                                        if (!orderObservationRequestKeys.contains("observationRequest")) {
+                                            System.out.println("ENTRA IF DE OBSERVATION REQUEST!");
+                                            populateObrSegment(obr,order);
+                                        } else {
+                                            System.out.println("ENTRA ELSE DE OBSERVATION REQUEST!");
+                                            for (String orderObservationRequestKey : orderObservationRequestKeys) {
+                                                String observationRequestPath = orderObservationRequestPath + "." + orderObservationRequestKey;
+                                                String observationRequestValues = orderObservationRequest.string(orderObservationRequestKey);
+
+                                                switch(orderObservationRequestKey){
+                                                    case "observationRequest":
+                                                        Json observationRequest = singleJsonPropertyParse(observationRequestPath,observationRequestValues);
+                                                        populateObrSegment(obr,observationRequest);
+                                                        break;
+                                                    case "testCodeDetail":
+                                                        TCD tcd = (TCD) observationRequestGroup.get("TCD");
+                                                        Json testCodeDetail = singleJsonPropertyParse(observationRequestPath,observationRequestValues);
+                                                        populateTcdSegment(tcd,testCodeDetail);
+                                                        break;
+                                                    case "notesAndComments":
+                                                        List<Json> orderGroupNotesAndCommentsList = multipleJsonPropertyParse(observationRequestPath,observationRequestValues);
+                                                        for (int j = 0; j < orderGroupNotesAndCommentsList.size(); j++) {
+                                                            NTE orderGroupNte = (NTE) orderGroup.get("NTE",i);
+                                                            Json orderGroupNotesAndComments = orderGroupNotesAndCommentsList.get(j);
+                                                            populateNteSegment(orderGroupNte,orderGroupNotesAndComments);
+                                                        }
+                                                        break;
+                                                    case "participationInformation":
+                                                        break;
+                                                    case "contactData":
+                                                        break;
+                                                    case "diagnosis":
+                                                        break;
+                                                    case "OBSERVATION":
+                                                        break;
+                                                    case "SPECIMEN":
+                                                        String orderSpecimenPath = orderGroupPropPath+".SPECIMEN";
+                                                        String orderSpecimenValue = orderObservationRequest.string("SPECIMEN");
+
+                                                        AbstractGroup specimenGroup = (AbstractGroup) observationRequestGroup.get("SPECIMEN");
+                                                        List<Json> specimenGroupList = multipleJsonPropertyParse(orderSpecimenPath, orderSpecimenValue);
+                                                        for (int j = 0; j < specimenGroupList.size(); j++) {
+                                                            SPM specimenSpm = (SPM) specimenGroup.get("SPM");
+                                                            Json specimenGroupValue = specimenGroupList.get(j);
+                                                            Set<String> specimenGroupKeys = specimenGroupValue.keys();
+                                                            if (!specimenGroupKeys.contains("specimen")) {
+                                                                populateSpmSegment(specimenSpm,specimenGroupValue);
+                                                            } else {
+                                                                for (String specimenGroupKey : specimenGroupKeys) {
+                                                                    String specimenPath = orderSpecimenPath + "." + specimenGroupKey;
+                                                                    String specimenValues = specimenGroupValue.string(specimenGroupKey);
+
+                                                                    switch (specimenGroupKey) {
+                                                                        case "specimen":
+                                                                            Json specimen = singleJsonPropertyParse(specimenPath,specimenValues);
+                                                                            populateSpmSegment(specimenSpm,specimen);
+                                                                            break;
+                                                                        case "SPECIMEN_OBSERVATION":
+                                                                            break;
+                                                                        case "CONTAINER":
+                                                                            String specimenContainerPath = orderSpecimenPath+".CONTAINER";
+                                                                            String specimenContainerValue = specimenGroupValue.string("CONTAINER");
+
+                                                                            AbstractGroup containerGroup = (AbstractGroup) specimenGroup.get("CONTAINER");
+                                                                            List<Json> containerGroupList = arrayPropertyToJson(specimenContainerPath, specimenContainerValue);
+                                                                            for (int k = 0; k < containerGroupList.size(); k++) {
+                                                                                SAC sac = (SAC) containerGroup.get("SAC");
+                                                                                Json containerGroupValue = containerGroupList.get(k);
+                                                                                Set<String> containerGroupKeys = containerGroupValue.keys();
+                                                                                if (!containerGroupKeys.contains("specimenContainerDetail")) {
+                                                                                    populateSacSegment(sac,containerGroupValue);
+                                                                                } else {
+                                                                                    for (String containerGroupKey : containerGroupKeys) {
+                                                                                        String containerPath = specimenContainerPath + "." + containerGroupKey;
+                                                                                        String containerValues = containerGroupValue.string(containerGroupKey);
+
+                                                                                        switch (containerGroupKey) {
+                                                                                            case "specimenContainerDetail":
+                                                                                                Json specimenContainerDetail = singleJsonPropertyParse(containerPath,containerValues);
+                                                                                                populateSacSegment(sac,specimenContainerDetail);
+                                                                                                break;
+                                                                                            case "CONTAINER_OBSERVATION":
+                                                                                                break;
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                            break;
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                        break;
+                                                    case "PRIOR_RESULT":
+                                                        break;
+                                                    case "financialTransaction":
+                                                        break;
+                                                    case "clinicalTrialIdentification":
+                                                        break;
+                                                    case "Billing":
+                                                        break;
+                                                    default:
+                                                        throw EndpointException.permanent(ErrorCode.ARGUMENT,"The property ['"+orderObservationRequestKey+"'] does not correspond with any possible OBSERVATION_REQUEST segment");
+                                                }
+                                            }
+                                        }
                                         break;
                                     case "Financial Transaction":
                                         break;
@@ -487,8 +604,6 @@ public class SegmentPopulator {
                                         throw EndpointException.permanent(ErrorCode.ARGUMENT,"The property ['"+key+"'] does not correspond with any possible ORDER segment");
                                 }
                             }
-                        } else {
-                            populateOrcSegment(orc,order);
                         }
                     }
                     break;
@@ -4367,6 +4482,101 @@ public class SegmentPopulator {
                     break;
                 default:
                     throw EndpointException.permanent(ErrorCode.ARGUMENT, "The property ['" + key + "'] does not correspond with any possible ORC field");
+            }
+        }
+    }
+
+    public static void populateObrSegment(OBR obr, Json obrValues) throws DataTypeException {
+        for (String key : obrValues.keys()) {
+            String propPath = "observationRequest." + key;
+            String propValue = obrValues.string(key);
+
+            switch (key) {
+                //Populate ORC.1 - Order Control
+                case "setId":
+                    obr.getSetIDOBR().setValue(propValue);
+                    break;
+                case "placerOrderNumber":
+                    Json placerOrderNumber = jsonOrValuePropertyParse(propPath,propValue);
+                    populateEiField(obr.getPlacerOrderNumber(),placerOrderNumber);
+                    break;
+                case "fillerOrderNumber":
+                    Json fillerOrderNumber = jsonOrValuePropertyParse(propPath,propValue);
+                    populateEiField(obr.getFillerOrderNumber(),fillerOrderNumber);
+                    break;
+                default:
+                    throw EndpointException.permanent(ErrorCode.ARGUMENT, "The property ['" + key + "'] does not correspond with any possible OBR field");
+            }
+        }
+    }
+
+    public static void populateSpmSegment(SPM spm, Json spmValues) throws DataTypeException {
+        for (String key : spmValues.keys()) {
+            String propPath = "specimen." + key;
+            String propValue = spmValues.string(key);
+
+            switch (key) {
+                case "setId":
+                    spm.getSetIDSPM().setValue(propValue);
+                    break;
+                case "specimenId":
+                    Json specimenId = jsonOrValuePropertyParse(propPath,propValue);
+                    populateEipField(spm.getSpecimenID(),specimenId);
+                    break;
+                case "specimenType":
+                    Json specimenType = jsonOrValuePropertyParse(propPath,propValue);
+                    populateCweField(spm.getSpecimenType(),specimenType);
+                    break;
+                case "specimenCollectionSite":
+                    Json specimenCollectionSite = jsonOrValuePropertyParse(propPath,propValue);
+                    populateCweField(spm.getSpecimenCollectionSite(),specimenCollectionSite);
+                    break;
+                case "specimenCollectionDateTime":
+                    Json specimenCollectionDateTime = jsonOrValuePropertyParse(propPath,propValue);
+                    populateDrField(spm.getSpecimenCollectionDateTime(),specimenCollectionDateTime);
+                    break;
+                default:
+                    throw EndpointException.permanent(ErrorCode.ARGUMENT, "The property ['" + key + "'] does not correspond with any possible SPM field");
+            }
+        }
+    }
+
+    public static void populateSacSegment(SAC sac, Json sacValues) throws DataTypeException {
+        for (String key : sacValues.keys()) {
+            String propPath = "specimenContainerDetail." + key;
+            String propValue = sacValues.string(key);
+
+            switch (key) {
+                case "externalAccessionIdentifier":
+                    Json externalAccessionIdentifier = jsonOrValuePropertyParse(propPath,propValue);
+                    populateEiField(sac.getExternalAccessionIdentifier(),externalAccessionIdentifier);
+                    break;
+                case "accessionIdentifier":
+                    Json accessionIdentifier = jsonOrValuePropertyParse(propPath,propValue);
+                    populateEiField(sac.getAccessionIdentifier(),accessionIdentifier);
+                    break;
+                case "containerIdentifier":
+                    Json containerIdentifier = jsonOrValuePropertyParse(propPath,propValue);
+                    populateEiField(sac.getContainerIdentifier(),containerIdentifier);
+                    break;
+                default:
+                    throw EndpointException.permanent(ErrorCode.ARGUMENT, "The property ['" + key + "'] does not correspond with any possible SAC field");
+            }
+        }
+    }
+
+    public static void populateTcdSegment(TCD tcd, Json tcdValues) throws DataTypeException {
+        for (String key : tcdValues.keys()) {
+            String propPath = "testCodeDetail." + key;
+            String propValue = tcdValues.string(key);
+
+            switch (key) {
+                case "universalServiceIdentifier":
+                    Json universalServiceIdentifier = jsonOrValuePropertyParse(propPath,propValue);
+                    populateCweField(tcd.getUniversalServiceIdentifier(),universalServiceIdentifier);
+                    break;
+                default:
+                    throw EndpointException.permanent(ErrorCode.ARGUMENT, "The property ['" + key + "'] does not correspond with any possible TCD field");
             }
         }
     }

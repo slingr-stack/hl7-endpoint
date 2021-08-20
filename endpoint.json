@@ -25,6 +25,11 @@
 			"label": "Message Arrived",
 			"name": "messageArrived",
 			"description": "When a new HL7 arrived."
+		},
+		{
+			"label": "Webhook",
+			"name": "receiveHl7MessageHttp",
+			"description": "Happens when a HTTP request hits the endpoint URL. Must be a POST with content type application/json."
 		}
 	],
 	"functions": [

@@ -578,6 +578,7 @@ public class DataTypePopulator {
             switch (key) {
                 //Populate EI.1 "Entity Identifier"
                 case "mainValue":
+                case "entityIdentifier":
                     ei.getEntityIdentifier().setValue(propValue);
                     break;
                 //Populate EI.2 "Namespace Id"
