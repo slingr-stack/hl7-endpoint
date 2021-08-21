@@ -336,13 +336,9 @@ public class Hl7Endpoint extends Endpoint {
 	private WebServiceResponse receiveHl7MessageHttp(WebServiceRequest request) {
 		Json responseBody = Json.map();
 		responseBody.set("Example","Something");
-		WebServiceResponse response = new WebServiceResponse(responseBody);
-		response.setHttpCode(202);
-		response.setHeader(Parameter.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType());
-		response.setHeader("value", "someHeader");
 		System.out.println("Request es:"+request.toString());
-		System.out.println("Response es:"+response.toString());
-		return response;
+		System.out.println("Response es:"+responseBody.toString());
+		return new WebServiceResponse(responseBody, ContentType.APPLICATION_JSON.toString());
 	}
 
 }
